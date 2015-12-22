@@ -1,0 +1,10 @@
+| value | Description |
+|-------|-------------|
+|stateUnspecified| |
+|stateUnchanged| |
+|stateHidden| |
+|stateAlwaysHidden| |
+|stateVisible| |
+|adjustUnspecified| |
+|adjustResize| |
+|adjustPan| |

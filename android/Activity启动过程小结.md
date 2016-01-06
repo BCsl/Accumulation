@@ -18,8 +18,8 @@
 
 * 2.新进程的启动
 
-* 3.发送的`AMS`的`ApplicationThread`是一个`Binder`本地对象？
-  - 见Step29,记录在Processrecord#thread的应该是binder本地对象，并非代理对象，所以可能并没有经过进程间通信来处理`schedulePauseActivity`方法？__update:2016-01-03但如果这样暂停超时便没有了意义？,但是`ApplicationThread`各种的调度是通过发送消息到`ActivityThread`的`Handler`类型的成员变量`H`来处理！所以也是一个异步操作__，另外如果发送的是代理对象，那么会有多个`AppApplicationThread`的本地对象（在`ActivityThread`的构造的时候初始化）
+* 3.发送到`AMS`的`ApplicationThread`是一个`Binder`本地对象？
+  - 见Step29,记录在Processrecord#thread的应该是`binder`本地对象，并非代理对象，所以可能并没有经过进程间通信来处理`schedulePauseActivity`方法？__update:2016-01-03但如果这样暂停超时便没有了意义？,但是`ApplicationThread`各种的调度是通过发送消息到`ActivityThread`的`Handler`类型的成员变量`H`来处理！所以也是一个异步操作__，另外如果发送的是代理对象，那么会有多个`AppApplicationThread`的本地对象（在`ActivityThread`的构造的时候初始化）
 
 * 4.`Activity`与`token`间的联系
   `Token`这个类继承自`IApplicationToken.Stub`,内部保存了所属的`ActivityRecord`的弱引用，`Token`用于`Ams`和`ApplicationThread`这个`Binder`本地对象直接通信，`ActivityClientRecord`以`Token`标识保存在`ActivityThread`，当`ActivityRecord`所需要的信息都初始化好（`ActivityStack`,`TaskRecord`,`Processrecord`），`AMS`通过`ApplicationThread`调度启动`Activity`,

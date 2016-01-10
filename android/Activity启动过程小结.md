@@ -13,7 +13,7 @@
 ## 一些问题
 * 1.`Activity`与`ActivityRecord`和`ActivityClientRecord`是如何关联？
   - `ActivityRecord`保存在AMS，`Activity`启动的时候新建，用来描述`Activity`，并保存到相应的`ActivityStack`的`TaskRecord`，
-  - 当`ActivityRecord`所需要的信息都初始化好（`ActivityStack`,`TaskRecord`,`Processrecord`），`AMS`通过`ApplicationThread`调度启动`Activity`,会想创建`ActivityClientRecord`对象保存需要启动的`Activity`信息，保留了`ActivityRecord`的`Token`值，并以`Token`值保留在了`ActivityThread`的`mActivities`中，之后的一些回调就可以通过`ActivityClientRecord`来找到对应的`Activity`来回调，而`AMS`需要再次调度`Activity`得时候，通过其保存的`ActivityRecord`的`Token`就可以找到`ActivityClientRecord`
+  - 当`ActivityRecord`所需要的信息都初始化好（`ActivityStack`,`TaskRecord`,`Processrecord`），`AMS`通过`ApplicationThread`调度启动`Activity`,会想创建`ActivityClientRecord`对象保存需要启动的`Activity`信息，保留了`ActivityRecord`的`Token`值，并以`Token`值保留在了`ActivityThread`的`HashMap`类型的成员变量`mActivities`中，之后的一些回调就可以通过`ActivityClientRecord`来找到对应的`Activity`来回调，而`AMS`需要再次调度`Activity`得时候，通过其保存的`ActivityRecord`的`Token`就可以找到`ActivityClientRecord`
   - `Activity`的构造和`attach`都需要用到`ActivityClientRecord`记录的信息，新建的`Activity`也记录在了`ActivityClientRecord`中，而`ActivityClientRecord`保存在`ActivityThread`中，之后的生命周期的调度就可以通过`ActivityClientRecord`来找到对应的`Activity`
 
 * 2.新进程的启动

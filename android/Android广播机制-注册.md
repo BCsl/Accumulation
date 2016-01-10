@@ -40,8 +40,7 @@
     }
 ```
 ## Step2
-注意到，在与`ActivityManagerService`通信之前先构造了一个`IIntentReceiver`对象，这是一个`IPC`机制的服务端对象，有两种方式来保存宿主`ReceiverDispatcher`
-，强引用或强、弱引用，这里只使用的是弱引用方式
+注意到，在与`ActivityManagerService`通信之前先构造了一个`IIntentReceiver`对象，这是一个`IPC`机制的服务端对象，有两种方式来保存宿主`ReceiverDispatcher`，强引用或强、弱引用，这里只使用的是弱引用方式
 
 ```java
 static final class ReceiverDispatcher {
@@ -301,3 +300,6 @@ public Intent registerReceiver(IApplicationThread caller, String callerPackage,
 }
 
 ```
+
+## Setp5
+`IntentResolver`类型的`mReceiverResolver`的作用

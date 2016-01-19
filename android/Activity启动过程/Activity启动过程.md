@@ -96,7 +96,7 @@ Instrumentation.java
 //token:Activity的成员变量mToken（IApplicationToken.Stub类型）
 //requestCode=-1 ,option=null,
 
-public ActivityResult execStartActivity(Context who, IBinder contextThread, IBinder token, Fragment target,
+public ActivityResult execStartActivity(Context who, IBinder contextThread, IBinder token, Activity target,
     Intent intent, int requestCode, Bundle options) {
     IApplicationThread whoThread = (IApplicationThread) contextThread;
     //...
@@ -106,7 +106,7 @@ public ActivityResult execStartActivity(Context who, IBinder contextThread, IBin
         int result = ActivityManagerNative.getDefault()
             .startActivity(whoThread, who.getBasePackageName(), intent,
                     intent.resolveTypeIfNeeded(who.getContentResolver()),
-                    token, target != null ? target.mWho : null,
+                    token,target != null ? target.mEmbeddedID : null,
                     requestCode, 0, null, null, options);
         checkStartActivityResult(result, intent);
     } catch (RemoteException e) {
@@ -121,7 +121,7 @@ ActivityManagerProxy.java
 //caller:mMainThread.getApplicationThread()，是一个binder本地对象
 //resultTo:Activity的成员变量mToken，IApplicationToken.Stub，应用标识保存了其在AMS中的ActivityRecord
 //requestCode=-1 ,option=null,，profileFd=null,profileFile=null,startFlags=0
-//resultWho:Activity(Fragment)的成员变量mWho,
+//resultWho:Activity的成员变量mEmbeddedID（attach的时候初始化）,
 
 public int startActivity(IApplicationThread caller, String callingPackage, Intent intent,
            String resolvedType, IBinder resultTo, String resultWho, int requestCode,
@@ -197,7 +197,7 @@ case START_ACTIVITY_TRANSACTION:
 //resultTo:Activity的成员变量mToken，是一个binder本地对象
 //caller:mMainThread.getApplicationThread()
 //requestCode=-1 //option=null，profileFd=null,profileFile=null,startFlags=0
-//resultWho:Activity(Fragment)的成员变量mWho
+//resultWho:Activity的成员变量mEmbeddedID（attach的时候初始化）
 
 ActivityManagerService.java
 
@@ -221,7 +221,8 @@ ActivityStackSupervisor内部有两种ActivityStack，mHomeStack和mFocusedStack
 ActivityManagerService.java
 
 //requestCode=-1 ,option=null,resultTo:Activity的成员变量mToken，profileFd=null,profileFile=null,startFlags=0
-//resultWho:Activity(Fragment)的成员变量mWho,caller:mMainThread.getApplicationThread()
+//resultWho:Activity的成员变量mEmbeddedID（attach的时候初始化）
+//caller:mMainThread.getApplicationThread()
 
     @Override
     public final int startActivityAsUser(IApplicationThread caller, String callingPackage,
@@ -246,7 +247,8 @@ ActivityManagerService.java
 ```java
 ActivityStackSupervisor.java
 //requestCode=-1 ,option=null,resultTo:Activity的成员变量mToken，profileFd=null,profileFile=null,startFlags=0
-//resultWho:Activity(Fragment)的成员变量mWho,caller:mMainThread.getApplicationThread()
+//resultWho:Activity的成员变量mEmbeddedID（attach的时候初始化）
+//caller:mMainThread.getApplicationThread()
 //outResult=null,config=null
 
 
@@ -353,8 +355,9 @@ __READMORE:ActivityInfo的解析__
 ```java
 ActivityStackSupervisor.java
 //requestCode=-1,option=null
-//resultTo:Activity的成员变量mToken(IApplicationTokenStub)，profileFd=null,profileFile=null,startFlags=0
-//resultWho:Activity(Fragment)的成员变量mWho
+//resultTo:Activity的成员变量mToken(IApplicationTokenStub)，通过它可以找到起在AMS对应的ActivityRecord
+//profileFd=null,profileFile=null,startFlags=0
+//resultWho:Activity的成员变量mEmbeddedID（attach的时候初始化）
 //caller:mMainThread.getApplicationThread()，保存在ProcessRecord#thread
 //outResult=null,config=null,ainfo:from resolveActivity,outActivity:null,
 
@@ -388,6 +391,7 @@ final int startActivityLocked(IApplicationThread caller,Intent intent, String re
             sourceRecord = isInAnyStackLocked(resultTo);
             if (DEBUG_RESULTS) Slog.v(TAG, "Will send result to " + resultTo + " " + sourceRecord);
             if (sourceRecord != null) {
+              //如果requestCode大于0，且不在在finishing，那么就记录这个`ActivityRecord`，并在之后找到其所在`ActivityStack`
                 if (requestCode >= 0 && !sourceRecord.finishing) {
                     resultRecord = sourceRecord;
                 }
@@ -460,7 +464,7 @@ final int startActivityLocked(IApplicationThread caller,Intent intent, String re
         //callerApp:Laucher对应的Processrecord
         //ainfo:from resolveActivity
         //resultRecord=null
-        //resultWho:launcher的成员变量mWho,
+        //resultWho:Activity的成员变量mEmbeddedID（attach的时候初始化）
         //requestCode=-1
         //componentSpecified:否指定了component属性，
         //this:
@@ -539,8 +543,8 @@ ActivityRecord(ActivityManagerService _service, ProcessRecord _caller,
       resolvedType = _resolvedType;
       componentSpecified = _componentSpecified;
       configuration = _configuration;
-      resultTo = _resultTo;//null
-      resultWho = _resultWho;//launcher的成员变量mWho
+      resultTo = _resultTo;//null,requestCode>0的时候才有可能不为NULL
+      resultWho = _resultWho;//Launcher的成员变量mEmbeddedID（attach的时候初始化）
       requestCode = _reqCode;//-1
       state = ActivityState.INITIALIZING;
       frontOfTask = false;
@@ -715,10 +719,11 @@ final int startActivityUncheckedLocked(ActivityRecord r,ActivityRecord sourceRec
                startFlags &= ~ActivityManager.START_FLAG_ONLY_IF_NEEDED;
            }
        }
-       //下面是三种需要创建新的TASK的情况：
+       //下面是三种可能需要创建新的TASK的情况：
        //（1）sourceRecord=null说明要启动的Activity并不是由一个Activity的Context启动的，这时候我们总是启动一个新的TASK。
        //（2）Launcher是SingleInstance模式（或者说启动新的Activity的源Activity的launchMode为SingleInstance）
-       //（3）需要启动的Activity的launchMode == ActivityInfo.LAUNCH_SINGLE_INSTANCE|| r.launchMode == //ActivityInfo.LAUNCH_SINGLE_TASK（SingleTask也需要NEW_TASK？）
+       //（3）需要启动的Activity的launchMode == ActivityInfo.LAUNCH_SINGLE_INSTANCE|| r.launchMode == //ActivityInfo.LAUNCH_SINGLE_TASK
+       //（4）当前`Activity`被一个正在`finishing`的`Activity`启动
        if (sourceRecord == null) {
             //这种情况下是否和启动来自Service和BroadcastReceiver的context一致？
            // This activity is not being started from another...  in this case we -always- start a new task.
@@ -744,8 +749,7 @@ final int startActivityUncheckedLocked(ActivityRecord r,ActivityRecord sourceRec
                // the NEW_TASK flow and try to find a task for it.
                //如果sourceRecord已经处于finishing状态，那么他所在的Task就很有可能已经为空或者即将为空
                if ((launchFlags&Intent.FLAG_ACTIVITY_NEW_TASK) == 0) {
-                   Slog.w(TAG, "startActivity called from finishing " + sourceRecord
-                           + "; forcing " + "Intent.FLAG_ACTIVITY_NEW_TASK for: " + intent);
+                   Slog.w(TAG, "startActivity called from finishing " + sourceRecord + "; forcing " + "Intent.FLAG_ACTIVITY_NEW_TASK for: " + intent);
                    launchFlags |= Intent.FLAG_ACTIVITY_NEW_TASK;
                }
                sourceRecord = null;
@@ -765,8 +769,7 @@ final int startActivityUncheckedLocked(ActivityRecord r,ActivityRecord sourceRec
            // and let the new task continue launched as normal without a
            // dependency on its originator.
            Slog.w(TAG, "Activity is launching as a new task, so cancelling activity result.");
-           r.resultTo.task.stack.sendActivityResultLocked(-1, r.resultTo, r.resultWho, r.requestCode,
-               Activity.RESULT_CANCELED, null);
+           r.resultTo.task.stack.sendActivityResultLocked(-1, r.resultTo, r.resultWho, r.requestCode,Activity.RESULT_CANCELED, null);
            r.resultTo = null;
        }
 
@@ -784,10 +787,10 @@ final int startActivityUncheckedLocked(ActivityRecord r,ActivityRecord sourceRec
            if (r.resultTo == null) {//true
                // See if there is a task to bring to the front.  If this is a SINGLE_INSTANCE activity, there can be one and only one
                // instance of it in the history, and it is always in its own unique task, so we do a special search.
-               //对于LAUNCH_SINGLE_INSTANCE模式的，只会有一个唯一的实例在历史ActivityStack,且运行在特定的TaskRecord中，所以先在存在;LAUNCH_SINGLE_TASK也是只有一个唯一是ActivityStack
-               //中的寻找，否则才新建TASK
+               //对于LAUNCH_SINGLE_INSTANCE模式的，只会有一个唯一的实例在历史ActivityStack,且运行在特定的TaskRecord中，所以先在存在
+               //中的寻找，否则才新建TASK，LAUNCH_SINGLE_TASK也是只有一个唯一是ActivityStack
                //findTaskLocked：从最新的记录开始遍历mStacks,在每个ActivityStack中查找出与ActivityRecord类型参数r对应的ActivityRecord，什么才是相对应的？从最新的Taskrecord开始遍历mTaskHistory找,找出处于栈顶且状态不为finishing的ActivityRecord，该ActivityRecord记
-               //录的userid和目标的userid不等，或者栈顶activity的launchmode为LAUNCH_SINGLE_INSTANCE都找失败，从下一个TaskRecord中找，否则优先比较当前TaskRecord和目标ActivityRecord的affinity值，component值，affinityIntent的component值，其中一个匹配就返回
+               //录的userid和目标的userid不等，或者栈顶activity的launchmode为LAUNCH_SINGLE_INSTANCE都找失败，从下一个TaskRecord中找，否则优先比较当前TaskRecord和目标ActivityRecord的affinity值（找到与之对应的栈），component值，affinityIntent的component值，其中一个匹配就返回
                //findActivityLocked:从最新的记录开始遍历mStacks,在每个ActivityStack中查找出与ActivityRecord类型参数r对应的ActivityRecord，///什么才是相对应的？从最新的Taskrecord开始遍历mTaskHistory,然后遍历TaskRecord中的mActivity，找到不处于finishing状态，
                //componnent和目标相等且userid相等的ActivityRecord
                //区别：findActivityLocked的查找是从所有Task中的ActivityRecord的比较查找，findTaskLocked只从每个Task的栈顶的ActivityRecord
@@ -795,11 +798,12 @@ final int startActivityUncheckedLocked(ActivityRecord r,ActivityRecord sourceRec
                ActivityRecord intentActivity = r.launchMode != ActivityInfo.LAUNCH_SINGLE_INSTANCE
                        ? findTaskLocked(r)
                        : findActivityLocked(intent, r.info);
-               //intentActivity 所在的TASK就是要启动的Activity所在的Task，要启动的Activity所在的Stack //targetStack就是intentActivity所在的Stack。
+               //intentActivity 所在的TASK就是要启动的Activity所在的Task，要启动的Activity所在的Stack
+               //targetStack就是intentActivity所在的Stack。
                //这里为NULL,先忽略(这里有关于ActivityInfo.LAUNCH_SINGLE_TASK是否在新栈启动的逻辑).
                if (intentActivity != null) {//false
                     if (r.task == null) {
-                        r.task = intentActivity.task;
+                        r.task = intentActivity.task;//记录其所在的栈，相同的affinity值或component等
                     }
                     targetStack = intentActivity.task.stack;
                     targetStack.mLastPausedActivity = null;
@@ -818,7 +822,7 @@ final int startActivityUncheckedLocked(ActivityRecord r,ActivityRecord sourceRec
                     // to have the same behavior as if a new instance was
                     // being started, which means not bringing it to the front
                     // if the caller is not itself in the front.
-                    final ActivityStack lastStack = getLastStack();
+                    final ActivityStack lastStack = getLastStack();//mFocusedStack
                     	//遍历lastStack中所有TaskRecord中的ActivityStack，找到第一个不是停止的、delayedResume、okToShow且不等于notTop的
                       //notTop为NULL，因为FLAG_ACTIVITY_PREVIOUS_IS_TOP标识不为1
                     ActivityRecord curTop = lastStack == null?null : lastStack.topRunningNonDelayedActivityLocked(notTop);
@@ -840,8 +844,7 @@ final int startActivityUncheckedLocked(ActivityRecord r,ActivityRecord sourceRec
                             options = null;
                         }
                     }
-                    // If the caller has requested that the target task be
-                    // reset, then do so.
+                    // If the caller has requested that the target task be reset, then do so.
                     if ((launchFlags&Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED) != 0) {
                         intentActivity = targetStack.resetTaskIfNeededLocked(intentActivity, r);
                     }
@@ -860,6 +863,7 @@ final int startActivityUncheckedLocked(ActivityRecord r,ActivityRecord sourceRec
                                 new RuntimeException("here").fillInStackTrace());
                         return ActivityManager.START_RETURN_INTENT_TO_CALLER;
                     }
+                    //Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_CLEAR_TASK的搭配使用
                     if ((launchFlags &
                             (Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_CLEAR_TASK))
                             == (Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_CLEAR_TASK)) {
@@ -886,10 +890,10 @@ final int startActivityUncheckedLocked(ActivityRecord r,ActivityRecord sourceRec
                                 // intent.
                                 top.task.setIntent(r.intent, r.info);
                             }
-                            ActivityStack.logStartActivity(EventLogTags.AM_NEW_INTENT,
-                                    r, top.task);
+                            //触发onNewIntent
                             top.deliverNewIntentLocked(callingUid, r.intent);
                         } else {
+                            //`r`没在所匹配的`TaskRecord`中，那就需要进一步添加到`TaskRecord
                             // A special case: we need to
                             // start the activity because it is not currently
                             // running, and the caller has asked to clear the

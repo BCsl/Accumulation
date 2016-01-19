@@ -31,7 +31,7 @@ __需要匹配大小写__
 
 ### Data
 
-### 语法：
+#### 语法：
 ```java
 <data android:scheme="string"
       android:host="string"
@@ -45,16 +45,16 @@ __需要匹配大小写__
 `Data`稍微有点复杂，有两种模式，`MIME`和`URI`。`MIME`指媒体类型，如`image/jpeg`，可以表示图片、文本、视频等不同的媒体格式，而`URI`中包含的数据比较多了，下面是`URI`的结构：
 >`<scheme>://<host>:<port>[<path>|<pathPrefix>|<pathPattern>]`
 
-### Scheme
+#### Scheme
 `URI`的模式，如`http`,注意而不是`http:`
 
-### host
+#### host
 `URI`的主机，如果没有`Scheme`,那么就没意义的
 
-### port
+#### port
 `URI`的端口，如果没有`Scheme`和`host`，那么就没意义
 
-### path,pathPrefix,pathPattern
+#### path,pathPrefix,pathPattern
 必须以`/`开头。`path`和`pathPattern`都表示完整路径，`pathPattern`可以包含通配符`*`，`.*`，分别代表0个或者多个字符和0到多个字符的任意序列，`pathPrefix`表示路径的前缀信息。
 
 

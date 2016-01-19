@@ -178,7 +178,7 @@ case REGISTER_RECEIVER_TRANSACTION:
        }
 ```
 
-这里会做权限的检测,把`IIntentReceiver`类型的广播接收器`receiver`保存一个`ReceiverList`列表中，这个列表的宿主进程是`rl.app`，这里就是注册所在的进程了，在`ActivityManagerService`中，用一个进程记录块`ProcessRecord`来表示这个应用程序进程，它里面有一个列表`receivers`，专门用来保存这个进程注册的广播接收器。接着，又把这个`ReceiverList`列表以`receiver`为`Key`值保存在`ActivityManagerService`的成员变量`mRegisteredReceivers`中，这些都是为了方便在收到广播时，快速找到对应的广播接收器的
+这里会做权限的检测，把`IIntentReceiver`类型的广播接收器`receiver`保存一个`ReceiverList`列表中，这个列表的宿主进程是`rl.app`，这里就是注册所在的进程了，在`ActivityManagerService`中，用一个进程记录块`ProcessRecord`来表示这个应用程序进程，它里面有一个列表`receivers`，专门用来保存这个进程注册的广播接收器。接着，又把这个`ReceiverList`列表以`receiver`为`Key`值保存在`ActivityManagerService`的成员变量`mRegisteredReceivers`中，这些都是为了方便在收到广播时，快速找到对应的广播接收器的
 
 ```java
 
@@ -240,7 +240,8 @@ public Intent registerReceiver(IApplicationThread caller, String callerPackage,
         if (receiver == null) {
             return sticky;
         }
-        //mRegisteredReceivers是一个HashMap，key：IIntentReceiver，value:ReceiverList
+        //mRegisteredReceivers是一个HashMap，key：IIntentReceiver（相同的BroadcastReceiver，KEY都默认），value:ReceiverList
+        //value保存为list的原因是？有可能重复注册两个相同类型`BroadcastReceiver`实例？
         //ReceiverList继承自`ArrayList`，其实就是把广播接收器receiver保存一个ReceiverList列表中，这个列表的宿主进程是rl.app，
         ReceiverList rl = (ReceiverList)mRegisteredReceivers.get(receiver.asBinder());
         if (rl == null) {
@@ -301,5 +302,4 @@ public Intent registerReceiver(IApplicationThread caller, String callerPackage,
 
 ```
 
-## Setp5
-`IntentResolver`类型的`mReceiverResolver`的作用
+# 取消注册

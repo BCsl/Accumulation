@@ -46,12 +46,12 @@
 
 
  - ActivityInfo.LAUNCH_SINGLE_TASK
- 根据`FLAG_ACTIVITY_NEW_TASK`的4条规则，其中第三条便是与被启动的`Activity`的`launchMode`相关，以上可知，会尝试找到一个可匹配成功的`Taskrecord`，如果匹配成功了，该模式会像`Intent#FLAG_ACTIVITY_CLEAR_TOP`一样触发清理操作，在成功匹配到的`TaskRecord`中查找是否存在`r`,如果存在，`r`以上的`Activity`都会被`finiish`掉，并返回该`ActivityRecord`实例，接着出发`onNewIntent`，如果当前实例是默认模式，那么当前的实例也会`finish`，并返回NULL，或者`r`没在所匹配的`TaskRecord`中，那就需要进一步添加到`TaskRecord`，所以可以发现，`SingleTask`模式，但是它并不像官方文档描述的一样：`The system creates a new task and instantiates the activity at the root of the new task`，而是在跟它有相同`taskAffinity`的任务中启动，并且位于这个任务的堆栈顶端，所以如果指定特定的`taskAffinity`，就可以在新的`TaskRecord`启动
+ 根据`FLAG_ACTIVITY_NEW_TASK`的4条规则，其中第三条便是与被启动的`Activity`的`launchMode`相关，以上可知，会尝试找到一个可匹配成功的`Taskrecord`，如果匹配成功了，该模式会像`Intent#FLAG_ACTIVITY_CLEAR_TOP`一样触发清理操作，在成功匹配到的`TaskRecord`中查找是否存在`r`,如果存在，`r`以上的`Activity`都会被`finiish`掉，并返回该`ActivityRecord`实例，接着出发`onNewIntent`，如果当前实例是默认模式，那么当前的实例也会`finish`，并返回NULL，或者`r`没在所匹配的`TaskRecord`中，那就需要进一步添加到`TaskRecord`，所以可以发现，`SingleTask`模式，但是它并不像官方文档描述的一样：`The system creates a new task and instantiates the activity at the root of the new task`，而是在跟它有相同`taskAffinity`的任务中启动，并且位于这个任务的堆栈顶端，所以如果指定特定的`taskAffinity`，就可以在新的`TaskRecord`启动。
 
- :__`SingleTask`模式，但是它并不像官方文档描述的一样：`The system creates a new task and instantiates the activity at the root of the new task`，而是在跟它有相同`taskAffinity`的任务中启动，并且位于这个任务的堆栈顶端，所以如果指定特定的`taskAffinity`，就可以在新的`TaskRecord`启动__
+ __`SingleTask`模式，但是它并不像官方文档描述的一样：`The system creates a new task and instantiates the activity at the root of the new task`，而是在跟它有相同`taskAffinity`的任务中启动，并且位于这个任务的堆栈顶端，所以如果指定特定的`taskAffinity`，就可以在新的`TaskRecord`启动__
 
-  - ActivityInfo.LAUNCH_SINGLE_INSTANCE
+- ActivityInfo.LAUNCH_SINGLE_INSTANCE
   带该启动模式的`Activity`其启动`Intent`会带上带上了`Intent.FLAG_ACTIVITY_NEW_TASK`标记，同`ActivityInfo.LAUNCH_SINGLE_TASK`，如果该被启动的`Activity`被`startActivityForResult‘`的方式启动，且`requesCode`不为-1，即原先的`Activity`需要返回结果，源`Activity`将收到的是`Activity.RESULT_CANCELED`结果，该模式下，只会存在一个唯一的`ActivityRecord`实例在历史`ActivityStack`，且运行在特定的`TaskRecord`中
 
-  - Intent.FLAG_ACTIVITY_CLEAR_TASK
+- Intent.FLAG_ACTIVITY_CLEAR_TASK
   需要和`Intent.FLAG_ACTIVITY_NEW_TASK`搭配使用，

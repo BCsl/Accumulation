@@ -761,7 +761,7 @@ final int startActivityUncheckedLocked(ActivityRecord r,ActivityRecord sourceRec
            sourceStack = null;
        }
       //resultTo为空，request code为-1
-      //如果新的Activity要新创建Task而启动，而且原先的Activity需要返回结果，这种情况下，调用函数r.resultTo.task.stack.sendA//ctivityResultLocke//d（）将 //Activity.RESULT_CANCELED结果返回给launcher,并将resultTo置为null，resultTo的使命结束了。
+      //如果新的Activity要新创建Task而启动，而且原先的Activity需要返回结果，这种情况下，调用函数r.resultTo.task.stack.sendActivityResultLocke()方法将 //Activity.RESULT_CANCELED结果返回给launcher,并将resultTo置为null，resultTo的使命结束了。
        if (r.resultTo != null && (launchFlags&Intent.FLAG_ACTIVITY_NEW_TASK) != 0) {
            // For whatever reason this activity is being launched into a new
            // task...  yet the caller has requested a result back.  Well, that

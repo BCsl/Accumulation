@@ -61,7 +61,7 @@ final class SharedPreferencesImpl implements SharedPreferences {
     private final int mMode;
 
     private Map<String, Object> mMap;     // guarded by 'this'
-    private int mDiskWritesInFlight = 0;  // guarded by 'this'
+    private int mDiskWritesInFlight = 0;  // guarded by 'this'正在进行文件写入的数量
     private boolean mLoaded = false;      // guarded by 'this'
     private long mStatTimestamp;          // guarded by 'this'
     private long mStatSize;               // guarded by 'this'
@@ -397,9 +397,11 @@ final class SharedPreferencesImpl implements SharedPreferences {
                     // in-flight write owns it.  Clone it before
                     // modifying it.
                     // noinspection unchecked
+                    //有多个未完成的写操作时复制一份
                     mMap = new HashMap<String, Object>(mMap);
                 }
                 mcr.mapToWriteToDisk = mMap;
+                //增加一个未完成的写opt
                 mDiskWritesInFlight++;
 
                 boolean hasListeners = mListeners.size() > 0;
@@ -413,6 +415,7 @@ final class SharedPreferencesImpl implements SharedPreferences {
                     if (mClear) {
                         if (!mMap.isEmpty()) {
                             mcr.changesMade = true;
+                            //清空内存中xml数据
                             mMap.clear();
                         }
                         mClear = false;
@@ -454,10 +457,13 @@ final class SharedPreferencesImpl implements SharedPreferences {
         }
 
         public boolean commit() {
+            // 先通过commitToMemory方法提交到内存
             MemoryCommitResult mcr = commitToMemory();
+            //写文件操作
             SharedPreferencesImpl.this.enqueueDiskWrite(
                 mcr, null /* sync write on this thread okay */);
             try {
+               //阻塞等待写操作完成，UI操作需要注意
                 mcr.writtenToDiskLatch.await();
             } catch (InterruptedException e) {
                 return false;
@@ -510,13 +516,14 @@ final class SharedPreferencesImpl implements SharedPreferences {
     //改变完内存数据后，还需要改变硬盘数据
     private void enqueueDiskWrite(final MemoryCommitResult mcr,
                                   final Runnable postWriteRunnable) {
+        //writeToDiskRunnable用于更新硬盘数据
         final Runnable writeToDiskRunnable = new Runnable() {
                 public void run() {
                     synchronized (mWritingToDiskLock) {
                         writeToFile(mcr);
                     }
                     synchronized (SharedPreferencesImpl.this) {
-                        mDiskWritesInFlight--;
+                        mDiskWritesInFlight--;//前面增加了opt次数，现在处理完，减少次所
                     }
                     if (postWriteRunnable != null) {
                         postWriteRunnable.run();
@@ -531,14 +538,16 @@ final class SharedPreferencesImpl implements SharedPreferences {
         if (isFromSyncCommit) {
             boolean wasEmpty = false;
             synchronized (SharedPreferencesImpl.this) {
+                //如果当前只有一个写操作
                 wasEmpty = mDiskWritesInFlight == 1;
             }
             if (wasEmpty) {
+                //一个写操作就直接在当前线程中写文件，不用另起线程
                 writeToDiskRunnable.run();
                 return;
             }
         }
-        //非同步模式，在子线程中运行
+        //非同步模式，apply，在子线程中运行
         QueuedWork.singleThreadExecutor().execute(writeToDiskRunnable);
     }
 

@@ -4,6 +4,8 @@
 
   - LoaderManager，用于管理其所有的`Loader`（实际上是用`LoaderInfo`来描述）的生命周期，如`start`、`finishRetain`等
 
+  - LoaderManager.LoaderCallbacks，回调接口，用于与LoaderManager进行交互。例如，使用`onCreateLoader`回调方法创建新的加载器
+
   - LoaderInfo，描述了Loader的信息，状态和数据结果等，并适当地回调其Loader的生命周期进行，同时监听实际Loader的加载结果
 
   - Loader，在各种生命周回调中做出相应的操作，基本空实现，需要子类重写
@@ -14,7 +16,7 @@
   - 由于LoaderManager是由Activity和Fragment主动来管理的，每个Activity用一个ArrayMap的`mAllLoaderManager`来保存当前Activity及其附属Frament的唯一LoaderManager；在Activity配置发生变化时，Activity在由于配置发生改变而`destory`前会保存`mAllLoaderManager`（具体看`ActivityThread#performDestroyActivity`方法），当Activity再重新创建时，会在`attach`、`onCreate`方法中恢复`mAllLoaderManager`，并在又需要的情况下再`onStart`的时候尝试恢复之前的数据，这部分尚未深入研究，挖坑。
 
 * 如何自定义Loader
-  - 简单地可以参考`CursorLoader`
+  - 简单地可以参考`CursorLoader`或[官方DEMO](http://developer.android.com/intl/zh-cn/reference/android/content/AsyncTaskLoader.html)
 
 ## 一些bugs
 - [Support Fragments do not retain loaders on rotation](https://code.google.com/p/android/issues/detail?id=183783)

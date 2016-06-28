@@ -14,25 +14,32 @@
 
 这里需要强调一个观念，那就是单元测试只是测试一个方法单元，它不是测试一整个流程。举个例子来说，一个Login页面，上面有两个输入框和一个button。两个输入框分别用于输入用户名和密码。点击button以后，有一个UserManager会去执行performlogin操作，然后将结果返回，更新页面。那么我们给这个东西做单元测试的时候，不是测这一整个login流程。这种整个流程的测试：给两个输入框设置正确的用户名和密码，点击login button，最后页面得到更新。叫做集成测试，而不是单元测试。当然，集成测试也是有他的必要性的，然而这不是每个程序员应该花多少精力所在的地方。为什么是这样呢？因为集成测试设置起来很麻烦，运行起来很慢，在保证代码质量、改善代码设计方面更起不到任何作用，因此它的重要程度并不是那么高
 
-## 为什么要做单元测试
+## Android中的单元测试
 
-- 也许是因为换了工作，也许是因为职位调动，或其他原因，需要接手新的项目，当拿到一个新项目的时候，会有一种诚惶诚恐的感觉，因为一时间比较难理清楚整个app的结构是怎么划分的，各部分各模块之间又是什么样的关系。会怕改了某一个地方，结果其他一个莫名其妙的地方的受到了影响，然后导致了一个bug。所以，那种时候就会希望，如果我改了某个地方，能有个东西告诉我，这个改动影响到哪些地方，这样改是不是有问题的，会不会导致bug。虽然我可以把app启动起来，看看是不是能正常工作，然而一种case能工作，并不代表所有影响到的case都能工作，例如，一个密码设置功能，可能有不同的入口，首次启动的密码设置，设置界面的修改密码、设置界面的重置密码或者还有只有会员才有的增强密码设置，这样我就可能需要安装APP，进入不同的入口进行操作来验证这段代码是否正确，这也是一个很痛苦很费时间的过程，而且很多的外部条件也很难满足，比如说需要什么样的网络条件，需要用户是会员等等。尤其是在不知道有哪些地方用到了的情况下，我更加难以去遍历所有用到的地方，一个一个去验证这个改动有没有问题。在这种情况下，单元测试是才是最好的工具。首先，单元测试只是针对一个代码单元写的测试，保证一个代码单元的正确性总比保证整个app的正确性容易吧？遍历一个方法的所有参数和输出情况总比遍历一个app的所有用户场景容易吧？跑一次单元测试总比运行一次app快吧？
-
-- 在不写单元测试的情况下，我们的开发流程可能是这样的，要把整个功能都做完整，从model到controller(或Presenter、ViewModel）到view到util等等，一整套流程做下来，到最后才可能运行起来看看是不是对的，有的时候哪怕所有代码都写完了，也不一定能验证是不是对的，比如说后台还没有ready等等。总之，在没有单元测试的情况下，我们需要等到最后一刻才能手动验证代码是不是对的，然后发现原来这里错了一点，那里少了一点，然后一遍一遍的把app运行起来，改一点运行一遍。。。当开始写单元测试之后，可以在写完一部分功能独立的代码后，就能立刻看到他们是不是正确的。如果不是的话，我可以立刻就改正，而不用等到所有代码都写完整
-
-- 不熟悉你的代码的人人看你的代码的时候，如果有单元测试代码，对别人理解你的代码会有一定的促进作用，因为单元测试代码里面一般会包含了你当时设计这部分模块时的思路
+Android中的单元测试分为两种，Local Unit Tests 和 Instrumented Tests，前者运行在JVM，后者需要运行再Android设备
 
 ## Local Unit Tests
 
-Local Unit Tests运行在本地JVM，不需要安装APP，所以运行时间很快。也因此不能依赖Android的API，所以大多数时候需要用Mock的形式来做替换（后面会提到） ![LocalUnitTests](https://github.com/BCsl/Accumulation/blob/master/android/单元测试/img/LocalUnitTests.png)
+Local Unit Tests运行在本地JVM，不需要安装APP，所以运行时间很快。也因此不能依赖Android的API，所以大多数时候需要用Mock的形式来做替换（后面会提到） ![LocalUnitTests](https://raw.githubusercontent.com/BCsl/Accumulation/master/android/单元测试/img/LocalUnitTests.png)
 
 ### [配置](https://developer.android.com/training/testing/start/index.html)
 
-- 测试代码目录：(src/test/java)
+- 测试代码目录：`module-name/src/test/java`
 - 一般使用到的测试框架
 
   - JUnit4
   - Mockito
+
+使用Gradle添加相应的库
+
+```java
+  dependencies {
+    // Required -- JUnit 4 framework
+    testCompile 'junit:junit:4.12'
+    // Optional -- Mockito framework
+    testCompile 'org.mockito:mockito-core:1.10.19'
+}
+```
 
 ### 使用
 
@@ -350,7 +357,7 @@ public class TestRunningAppScanner {
 
 这是登录流程的时序图
 
-![Login Sequence](https://github.com/BCsl/Accumulation/blob/master/android/单元测试/img/Login Sequence.png)
+![Login Sequence](https://raw.githubusercontent.com/BCsl/Accumulation/master/android/单元测试/img/Login Sequence.png)
 
 回调的定义
 
@@ -437,7 +444,7 @@ public class TestDemo {
 
 使用Mockito并不可以Mock对象的静态方法、private修饰的方法、static方法、构造函数等，使用JMockit或PowerMock是可以解决这样的问题，有时间的话可以去实践下
 
-### 单元测试的优点
+### Local Unit Tests的优点
 
 - 不依赖Android的API，运行速度快，所以更快地得到结果反馈
 - 引导更好的代码设计（单一职责、依赖注入），如果一个类不好测，往往是因为这个类的设计是有问题
@@ -448,14 +455,38 @@ Instrumented Unit tests是需要运行再Android设备上的（物理/虚拟）�
 
 ### [配置](https://developer.android.com/topic/libraries/testing-support-library/index.html#)
 
-- 测试代码目录：(src/androidTest/java)
+- 测试代码目录：`module-name/src/androidTests/java/`
 - 一般使用到的测试框架
 
-  - Testing Support Library
+  - AndroidJUnitRunner ： JUnit 4-compatible test runner for Android
+  - Espresso ：UI testing framework; suitable for functional UI testing within an app
+  - UI Automator ：UI testing framework; suitable for cross-app functional UI testing across system and installed apps
 
-    - AndroidJUnitRunner ： JUnit 4-compatible test runner for Android
-    - Espresso ：UI testing framework; suitable for functional UI testing within an app
-    - UI Automator ：UI testing framework; suitable for cross-app functional UI testing across system and installed apps
+通过Gralde添加相应的库
+
+```java
+dependencies {
+    androidTestCompile 'com.android.support:support-annotations:24.0.0'
+    androidTestCompile 'com.android.support.test:runner:0.5'
+    androidTestCompile 'com.android.support.test:rules:0.5'
+    // Optional -- Hamcrest library
+    androidTestCompile 'org.hamcrest:hamcrest-library:1.3'
+    // Optional -- UI testing with Espresso
+    androidTestCompile 'com.android.support.test.espresso:espresso-core:2.2.2'
+    // Optional -- UI testing with UI Automator
+    androidTestCompile 'com.android.support.test.uiautomator:uiautomator-v18:2.1.2'
+}
+```
+
+另外还需要在你的App的模块的`build.gralde`文件添加如下设置：
+
+```java
+android {
+    defaultConfig {
+        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+    }
+}
+```
 
 ### 使用
 
@@ -723,7 +754,7 @@ Google官方的[Android Architecture Blueprints](https://github.com/googlesample
 
 这是这个项目对于MVP模式的各层做测试的各种测试框架使用
 
-![MVPTesting](https://github.com/BCsl/Accumulation/blob/master/android/单元测试/img/MVPTesting.png)
+![MVPTesting](https://raw.githubusercontent.com/BCsl/Accumulation/master/android/单元测试/img/MVPTesting.png)
 
 - View层:涉及到UI且需要再设备上运行，所以需要Espresso和AndroidJUnitRunner
 - Preseneter层：Preseneter层应该设计成纯JAVA层的，所以使用JUnit+Mockito

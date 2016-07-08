@@ -1,4 +1,8 @@
-# 从ScrollView中学习如何自定的可以滚动的View
+# 从ScrollView中
+
+- 触摸事件处理
+- 学习如何自定的可以滚动的View
+- OverScroll效果
 
 ## 初始化阶段
 
@@ -34,7 +38,7 @@ debugMeasure() called with: hideMode = [0], hideSize = [0]
 ```java
 @Override
 protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-    super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+    super.onMeasure(widthMeasureSpec, heightMeasureSpec); //第一次测量
 
     if (!mFillViewport) { //是否使Content填充ScrollView
         return;
@@ -66,6 +70,19 @@ protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
             child.measure(childWidthMeasureSpec, childHeightMeasureSpec);
         }
     }
+}
+```
+
+```java
+
+@Override
+protected void measureChildWithMargins(View child, int parentWidthMeasureSpec, int widthUsed,int parentHeightMeasureSpec, int heightUsed) {
+    final MarginLayoutParams lp = (MarginLayoutParams) child.getLayoutParams();
+
+    final int childWidthMeasureSpec = getChildMeasureSpec(parentWidthMeasureSpec,  mPaddingLeft + mPaddingRight + lp.leftMargin + lp.rightMargin+ widthUsed, lp.width);
+    final int childHeightMeasureSpec = MeasureSpec.makeSafeMeasureSpec(MeasureSpec.getSize(parentHeightMeasureSpec), MeasureSpec.UNSPECIFIED);
+
+    child.measure(childWidthMeasureSpec, childHeightMeasureSpec);
 }
 ```
 
@@ -162,7 +179,7 @@ public void draw(Canvas canvas) {
 这里一般的套路是：
 
 - `ACTION_DOWN`做一些参数初始化的操作，一般并不拦截，即返回false，否在子View就不可能接收到触摸事件了（例如：点击，etc）
-- `ACTION_MOVE`通过和`mTouchSlop`来比较判断是否需要自己处理，多点触摸一般可以不考虑的
+- `ACTION_MOVE`通过和`mTouchSlop`来比较判断是否需要自己处理，多点触摸可以先不考虑
 
 ```java
 @Override
@@ -181,13 +198,6 @@ public boolean onInterceptTouchEvent(MotionEvent ev) {
 
     switch (action & MotionEvent.ACTION_MASK) {
         case MotionEvent.ACTION_MOVE: { //通过和mTouchSlop比较来判断
-            /*
-             * mIsBeingDragged == false, otherwise the shortcut would have caught it. Check
-             * whether the user has moved far enough from his original down touch.
-             */
-            /*
-            * Locally do absolute value. mLastMotionY is set to the y value of the down event.
-            */
             final int activePointerId = mActivePointerId;
             if (activePointerId == INVALID_POINTER) {
                 // If we don't have a valid id, the touch down wasn't on content.
@@ -203,7 +213,7 @@ public boolean onInterceptTouchEvent(MotionEvent ev) {
             final int y = (int) ev.getY(pointerIndex);
             final int yDiff = Math.abs(y - mLastMotionY);
             if (yDiff > mTouchSlop && (getNestedScrollAxes() & SCROLL_AXIS_VERTICAL) == 0) {
-                mIsBeingDragged = true;
+                mIsBeingDragged = true; //需要拦截事件
                 mLastMotionY = y;
                 initVelocityTrackerIfNotExists();
                 mVelocityTracker.addMovement(ev);
@@ -219,7 +229,7 @@ public boolean onInterceptTouchEvent(MotionEvent ev) {
             break;
         }
 
-        case MotionEvent.ACTION_DOWN: { //正常情况下，都不拦截
+        case MotionEvent.ACTION_DOWN: { //不拦截Down，否则子View就没机会处理触摸事件
             final int y = (int) ev.getY();
             if (!inChild((int) ev.getX(), (int) y)) {
                 mIsBeingDragged = false;
@@ -271,3 +281,343 @@ public boolean onInterceptTouchEvent(MotionEvent ev) {
 ```
 
 ### 处理触摸事件
+
+#### ACTION_DOWN和ACTION_MOVE
+
+代码中会有有关Nested相关的代码，这些是5.0之后添加的，可以忽略
+
+```java
+@Override
+public boolean onTouchEvent(MotionEvent ev) {
+    initVelocityTrackerIfNotExists();
+
+    MotionEvent vtev = MotionEvent.obtain(ev);
+
+    final int actionMasked = ev.getActionMasked();
+
+    if (actionMasked == MotionEvent.ACTION_DOWN) {
+        mNestedYOffset = 0;
+    }
+    vtev.offsetLocation(0, mNestedYOffset);
+
+    switch (actionMasked) {
+        case MotionEvent.ACTION_DOWN: {
+            if (getChildCount() == 0) {
+                return false;
+            }
+            if ((mIsBeingDragged = !mScroller.isFinished())) {
+                final ViewParent parent = getParent();
+                if (parent != null) {
+                    parent.requestDisallowInterceptTouchEvent(true);
+                }
+            }
+            if (!mScroller.isFinished()) {
+                mScroller.abortAnimation();
+                if (mFlingStrictSpan != null) {
+                    mFlingStrictSpan.finish();
+                    mFlingStrictSpan = null;
+                }
+            }
+            // Remember where the motion event started
+            mLastMotionY = (int) ev.getY();
+            mActivePointerId = ev.getPointerId(0);
+            //...
+            break;
+        }
+        case MotionEvent.ACTION_MOVE:
+            final int activePointerIndex = ev.findPointerIndex(mActivePointerId);
+            if (activePointerIndex == -1) {
+                Log.e(TAG, "Invalid pointerId=" + mActivePointerId + " in onTouchEvent");
+                break;
+            }
+            final int y = (int) ev.getY(activePointerIndex);
+            int deltaY = mLastMotionY - y;
+            //...
+            if (!mIsBeingDragged && Math.abs(deltaY) > mTouchSlop) {
+                final ViewParent parent = getParent();
+                if (parent != null) {
+                    parent.requestDisallowInterceptTouchEvent(true);
+                }
+                mIsBeingDragged = true;
+                if (deltaY > 0) {
+                    deltaY -= mTouchSlop;
+                } else {
+                    deltaY += mTouchSlop;
+                }
+            }
+            if (mIsBeingDragged) {
+                // Scroll to follow the motion event
+                mLastMotionY = y - mScrollOffset[1];
+
+                final int oldY = mScrollY;
+                final int range = getScrollRange(); //Child滚动的范围，Child高度减去ScrollView高度和内边距
+                final int overscrollMode = getOverScrollMode(); //决定了是否有拉拽到边缘时的效果
+                boolean canOverscroll = overscrollMode == OVER_SCROLL_ALWAYS ||(overscrollMode == OVER_SCROLL_IF_CONTENT_SCROLLS && range > 0);
+
+                // Calling overScrollBy will call onOverScrolled, which
+                // calls onScrollChanged if applicable.
+                if (overScrollBy(0, deltaY, 0, mScrollY, 0, range, 0, mOverscrollDistance, true) && !hasNestedScrollingParent(){  //关键点在于overScrollBy，处理了滚动事件
+                    // Break our velocity if we hit a scroll barrier.
+                    mVelocityTracker.clear();
+                }
+
+                final int scrolledDeltaY = mScrollY - oldY;
+                final int unconsumedY = deltaY - scrolledDeltaY;
+                if (dispatchNestedScroll(0, scrolledDeltaY, 0, unconsumedY, mScrollOffset)) { //忽略
+                    mLastMotionY -= mScrollOffset[1];
+                    vtev.offsetLocation(0, mScrollOffset[1]);
+                    mNestedYOffset += mScrollOffset[1];
+                } else if (canOverscroll) { //EdgeEffect处理
+                    final int pulledToY = oldY + deltaY;
+                    if (pulledToY < 0) {
+                        mEdgeGlowTop.onPull((float) deltaY / getHeight(),ev.getX(activePointerIndex) / getWidth());
+                        if (!mEdgeGlowBottom.isFinished()) {
+                            mEdgeGlowBottom.onRelease();
+                        }
+                    } else if (pulledToY > range) {
+                        mEdgeGlowBottom.onPull((float) deltaY / getHeight(),1.f - ev.getX(activePointerIndex) / getWidth());
+                        if (!mEdgeGlowTop.isFinished()) {
+                            mEdgeGlowTop.onRelease();
+                        }
+                    }
+                    if (mEdgeGlowTop != null && (!mEdgeGlowTop.isFinished() || !mEdgeGlowBottom.isFinished())) {
+                        postInvalidateOnAnimation();
+                    }
+                }
+            }
+            break;
+        case MotionEvent.ACTION_UP:
+            //...
+            break;
+        case MotionEvent.ACTION_CANCEL:
+            //...
+            break;
+        case MotionEvent.ACTION_POINTER_DOWN: {
+            //...
+            break;
+        }
+        case MotionEvent.ACTION_POINTER_UP:
+            //...
+            break;
+    }
+
+    if (mVelocityTracker != null) {
+        mVelocityTracker.addMovement(vtev);
+    }
+    vtev.recycle();
+    return true;
+}
+```
+
+使子View滚动的关键处理在`overScrollBy`方法，这个方法用来判断是否到达控件边缘，这是View类中的方法，这个方法和`scrollBy`、`scrollTo`看着有点像，`scrollBy`、`scrollTo`都是平稳地移动到目的位置，都是使用`Scroller`类来实现的，但这里`overScrollBy`也是用用`Scroller`来处理的，具体在`onOverScrolled`方法，但这个方法在View类中是空实现，需要子类来实现，`ScrollView`就实现了这个方法
+
+```java
+View.java
+/**
+* @param deltaX Change in X in pixels x轴方向上的改变
+* @param deltaY Change in Y in pixels  y轴方向上的改变
+* @param scrollX Current X scroll value in pixels before applying deltaX 当前的scrollX
+* @param scrollY Current Y scroll value in pixels before applying deltaY 当前的scrollY
+* @param scrollRangeX Maximum content scroll range along the X axis X轴方向上的滚动范围
+* @param scrollRangeY Maximum content scroll range along the Y axis  Y轴方向上的滚动范围
+* @param maxOverScrollX Number of pixels to overscroll by in either direction along the X axis. X轴方向上最大的反弹距离
+* @param maxOverScrollY Number of pixels to overscroll by in either direction along the Y axis. X轴方向上最大的反弹距离
+* @param isTouchEvent true if this scroll operation is the result of a touch event.
+* @return true if scrolling was clamped to an over-scroll boundary along either axis, false otherwise.
+*/
+protected boolean overScrollBy(int deltaX, int deltaY, int scrollX, int scrollY, int scrollRangeX, int scrollRangeY,  int maxOverScrollX, int maxOverScrollY,boolean isTouchEvent) {
+    final int overScrollMode = mOverScrollMode;
+    final boolean canScrollHorizontal = computeHorizontalScrollRange() > computeHorizontalScrollExtent();
+    final boolean canScrollVertical =  computeVerticalScrollRange() > computeVerticalScrollExtent();
+
+    final boolean overScrollHorizontal = overScrollMode == OVER_SCROLL_ALWAYS || (overScrollMode == OVER_SCROLL_IF_CONTENT_SCROLLS && canScrollHorizontal);
+
+    final boolean overScrollVertical = overScrollMode == OVER_SCROLL_ALWAYS || (overScrollMode == OVER_SCROLL_IF_CONTENT_SCROLLS && canScrollVertical);
+
+    int newScrollX = scrollX + deltaX;
+    if (!overScrollHorizontal) {
+        maxOverScrollX = 0;
+    }
+
+    int newScrollY = scrollY + deltaY;
+    if (!overScrollVertical) {
+        maxOverScrollY = 0;
+    }
+
+    // Clamp values if at the limits and record
+    final int left = -maxOverScrollX; //左边缘
+    final int right = maxOverScrollX + scrollRangeX; //右边缘
+    final int top = -maxOverScrollY;
+    final int bottom = maxOverScrollY + scrollRangeY;
+
+    boolean clampedX = false;
+    if (newScrollX > right) { //到达右边缘
+        newScrollX = right;
+        clampedX = true;
+    } else if (newScrollX < left) { //到达左边缘
+        newScrollX = left;
+        clampedX = true;
+    }
+
+    boolean clampedY = false;
+    if (newScrollY > bottom) {  //到达底部边缘
+        newScrollY = bottom;
+        clampedY = true;
+    } else if (newScrollY < top) {  //到达顶部边缘
+        newScrollY = top;
+        clampedY = true;
+    }
+
+    onOverScrolled(newScrollX, newScrollY, clampedX, clampedY);
+
+    return clampedX || clampedY;
+}
+```
+
+ScrollView处理OverScroll，clampedX和clampedY代表了是否是OverScroll效果，代码中使用到`OverScroller#springBack`，这个方法平时还是用得少，回弹效果？
+
+```java
+@Override
+protected void onOverScrolled(int scrollX, int scrollY, boolean clampedX, boolean clampedY) {
+    // Treat animating scrolls differently; see #computeScroll() for why.
+    if (!mScroller.isFinished()) {
+        final int oldX = mScrollX;
+        final int oldY = mScrollY;
+        mScrollX = scrollX;
+        mScrollY = scrollY;
+        invalidateParentIfNeeded();
+        onScrollChanged(mScrollX, mScrollY, oldX, oldY);
+        if (clampedY) {
+            mScroller.springBack(mScrollX, mScrollY, 0, 0, 0, getScrollRange()); //回弹？
+        }
+    } else {
+        super.scrollTo(scrollX, scrollY);
+    }
+    awakenScrollBars();
+}
+```
+
+看看官方对`OverScroller#springBack`这个方法的作用的描述，当你需要实现回弹效果的时候使用该方法，startX为开始坐标值，最终X值会落在maxX和minX值中最靠近StartX的那个上
+
+```java
+/**
+ * Call this when you want to 'spring back' into a valid coordinate range.
+ *
+ * @param startX Starting X coordinate X坐标初始值
+ * @param startY Starting Y coordinate
+ * @param minX Minimum valid X value   X坐标的结果的最小值
+ * @param maxX Maximum valid X value   X坐标的结果的最大值
+ * @param minY Minimum valid Y value  
+ * @param maxY Minimum valid Y value  
+ * @return true if a springback was initiated, false if startX and startY were already within the valid range.
+ */
+public boolean springBack(int startX, int startY, int minX, int maxX, int minY, int maxY) {
+  //...
+}
+```
+
+使用`Scroller`一般还需要配合`computeScroll`使用，在还没有滚动完的时候还是会继续调用`overScrollBy`方法来处理
+
+```java
+@Override
+public void computeScroll() {
+    if (mScroller.computeScrollOffset()) {
+        int oldX = mScrollX;
+        int oldY = mScrollY;
+        int x = mScroller.getCurrX();
+        int y = mScroller.getCurrY();
+
+        if (oldX != x || oldY != y) {
+            final int range = getScrollRange();
+            final int overscrollMode = getOverScrollMode();
+            final boolean canOverscroll = overscrollMode == OVER_SCROLL_ALWAYS || (overscrollMode == OVER_SCROLL_IF_CONTENT_SCROLLS && range > 0);
+
+            overScrollBy(x - oldX, y - oldY, oldX, oldY, 0, range, 0, mOverflingDistance, false);
+            onScrollChanged(mScrollX, mScrollY, oldX, oldY);
+
+            if (canOverscroll) {
+                if (y < 0 && oldY >= 0) {
+                    mEdgeGlowTop.onAbsorb((int) mScroller.getCurrVelocity());
+                } else if (y > range && oldY <= range) {
+                    mEdgeGlowBottom.onAbsorb((int) mScroller.getCurrVelocity());
+                }
+            }
+        }
+
+        if (!awakenScrollBars()) {
+            // Keep on drawing until the animation has finished.
+            postInvalidateOnAnimation();
+        }
+    } else {
+        if (mFlingStrictSpan != null) {
+            mFlingStrictSpan.finish();
+            mFlingStrictSpan = null;
+        }
+    }
+}
+```
+
+#### ACTION_UP和ACTION_CANCEL
+
+```java
+@Override
+public boolean onTouchEvent(MotionEvent ev) {
+    //..
+    switch (actionMasked) {
+        case MotionEvent.ACTION_DOWN: {
+            //...
+            break;
+        }
+        case MotionEvent.ACTION_MOVE:
+            //...
+            break;
+        case MotionEvent.ACTION_UP:
+            if (mIsBeingDragged) {
+                final VelocityTracker velocityTracker = mVelocityTracker;
+                velocityTracker.computeCurrentVelocity(1000, mMaximumVelocity);
+                int initialVelocity = (int) velocityTracker.getYVelocity(mActivePointerId);
+
+                if ((Math.abs(initialVelocity) > mMinimumVelocity)) {
+                    flingWithNestedDispatch(-initialVelocity);
+                } else if (mScroller.springBack(mScrollX, mScrollY, 0, 0, 0,
+                        getScrollRange())) {
+                    postInvalidateOnAnimation();
+                }
+
+                mActivePointerId = INVALID_POINTER;
+                endDrag();
+            }
+            break;
+        case MotionEvent.ACTION_CANCEL:
+            if (mIsBeingDragged && getChildCount() > 0) {
+                if (mScroller.springBack(mScrollX, mScrollY, 0, 0, 0, getScrollRange())) {
+                    postInvalidateOnAnimation();
+                }
+                mActivePointerId = INVALID_POINTER;
+                endDrag();
+            }
+            break;
+        case MotionEvent.ACTION_POINTER_DOWN: {
+            final int index = ev.getActionIndex();
+            mLastMotionY = (int) ev.getY(index);
+            mActivePointerId = ev.getPointerId(index);
+            break;
+        }
+        case MotionEvent.ACTION_POINTER_UP:
+            onSecondaryPointerUp(ev);
+            mLastMotionY = (int) ev.getY(ev.findPointerIndex(mActivePointerId));
+            break;
+    }
+
+    if (mVelocityTracker != null) {
+        mVelocityTracker.addMovement(vtev);
+    }
+    vtev.recycle();
+    return true;
+}
+```
+
+## 小结
+
+- 在出来子View按照手指移动的时候使用的是`OverScroller#springBack`，为了可以实现OverScroll效果，如果只是普通的移动則可以使用`offsetLeftAndRight`或`offsetTopAndBottom`方法
+- ViewGroup在拦截阶段，`ACTION_DOWN`做一些参数初始化的操作，一般并不拦截，即返回false，否在子View就不可能接收到触摸事件了，在`ACTION_MOVE`通过和`mTouchSlop`来比较判断是否需要拦截

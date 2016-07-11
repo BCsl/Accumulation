@@ -12,7 +12,7 @@
 
 ### 两种角色
 
-被依赖和依赖被依赖的View，提供依赖的View必须实现`NestedScrollingChild`接口（CoordinaryLayout已经实现了`NestedScrollingParent`接口）
+被依赖和依赖被依赖的View
 
 这种依赖关系的建立由`CoordinatorLayout#LayoutParam`来指定，假设此时有两个View: A 和B，那么有两种情况会导致依赖关系
 
@@ -48,7 +48,7 @@ final Comparator<View> mLayoutDependencyComparator = new Comparator<View>() {
 };
 ```
 
-### 监听视图的重绘
+## 判断被依赖的View的状态改变
 
 CoordinatorLayout需要在每次视图发生重绘的时候检查被依赖视图的变化进行相应的回调，为了避免内存泄漏，每次Detach的时候回移除这个监听器并在重新Attach的时候添加回来
 
@@ -76,6 +76,98 @@ class OnPreDrawListener implements ViewTreeObserver.OnPreDrawListener {
         dispatchOnDependentViewChanged(false);
         return true;
     }
+}
+```
+
+## 判断被依赖的View的移除
+
+```java
+private class HierarchyChangeListener implements OnHierarchyChangeListener {
+    @Override
+    public void onChildViewAdded(View parent, View child) {
+          //...
+    }
+
+    @Override
+    public void onChildViewRemoved(View parent, View child) {
+        dispatchDependentViewRemoved(child);
+        //...
+    }
+}
+```
+
+## 事件的分发
+
+CoordinatorLayout并不会直接处理触摸事件，而是尽可能地先交由子View的处理，`performIntercept`方法就是用来分发不同的事件类型分发给对应的子View处理，分发的顺序并不是按照触摸点所在的区域的所有子View？
+
+```java
+private boolean performIntercept(MotionEvent ev, final int type) {
+    boolean intercepted = false;
+    boolean newBlock = false;
+
+    MotionEvent cancelEvent = null;
+
+    final int action = MotionEventCompat.getActionMasked(ev);
+
+    final List<View> topmostChildList = mTempList1;
+    getTopSortedChildren(topmostChildList); //在5.0以上，按照z属性来排序，以下，则是按照添加顺序或者自定义的绘制顺序来排列
+
+    // Let topmost child views inspect first
+    final int childCount = topmostChildList.size();
+    for (int i = 0; i < childCount; i++) {
+        final View child = topmostChildList.get(i);
+        final LayoutParams lp = (LayoutParams) child.getLayoutParams();
+        final Behavior b = lp.getBehavior();
+        // 如果有一个behavior对事件进行了拦截，就发送Cancel事件给后续的所有Behavior。假设之前还没有Intercept发生，那么所有的事件都平等地对所有含有behavior的view进行分发，现在intercept忽然出现，那么相应的我们就要对除了Intercept的view发出Cancel
+        if ((intercepted || newBlock) && action != MotionEvent.ACTION_DOWN) {
+            // Cancel all behaviors beneath the one that intercepted.
+            // If the event is "down" then we don't have anything to cancel yet.
+            if (b != null) {
+                if (cancelEvent == null) {
+                    final long now = SystemClock.uptimeMillis();
+                    cancelEvent = MotionEvent.obtain(now, now, MotionEvent.ACTION_CANCEL, 0.0f, 0.0f, 0);
+                }
+                switch (type) {
+                    case TYPE_ON_INTERCEPT:
+                        b.onInterceptTouchEvent(this, child, cancelEvent);
+                        break;
+                    case TYPE_ON_TOUCH:
+                        b.onTouchEvent(this, child, cancelEvent);
+                        break;
+                }
+            }
+            continue;
+        }
+
+        if (!intercepted && b != null) {
+            switch (type) {
+                case TYPE_ON_INTERCEPT:
+                    intercepted = b.onInterceptTouchEvent(this, child, ev);
+                    break;
+                case TYPE_ON_TOUCH:
+                    intercepted = b.onTouchEvent(this, child, ev);  
+                    break;
+            }
+            if (intercepted) {
+                mBehaviorTouchView = child; //记录当前需要处理事件的View
+            }
+        }
+
+        // Don't keep going if we're not allowing interaction below this.
+        // Setting newBlock will make sure we cancel the rest of the behaviors.
+        final boolean wasBlocking = lp.didBlockInteraction();
+        final boolean isBlocking = lp.isBlockingInteractionBelow(this, child);
+        newBlock = isBlocking && !wasBlocking;
+        if (isBlocking && !newBlock) {
+            // Stop here since we don't have anything more to cancel - we already did
+            // when the behavior first started blocking things below this point.
+            break;
+        }
+    }
+
+    topmostChildList.clear();
+
+    return intercepted;
 }
 ```
 

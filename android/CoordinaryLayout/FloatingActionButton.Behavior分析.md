@@ -68,13 +68,13 @@ public static class Behavior extends CoordinatorLayout.Behavior<FloatingActionBu
     }
     //更新FloatingActionButton位置
     private void updateFabTranslationForSnackbar(CoordinatorLayout parent, final FloatingActionButton fab, View snackbar) {
-        final float targetTransY = getFabTranslationYForSnackbar(parent, fab);
+        final float targetTransY = getFabTranslationYForSnackbar(parent, fab);//[0,-SnackbarLayout高度] ， 0的时候是隐藏状态
         if (mFabTranslationY == targetTransY) {
             // We're already at (or currently animating to) the target value, return...
             return;
         }
 
-        final float currentTransY = ViewCompat.getTranslationY(fab); //可知，snackbar是通过`TranslationY`的位移做动画效果
+        final float currentTransY = ViewCompat.getTranslationY(fab); //可知，snackbar是通过`TranslationY`的位移做动画效果，[0,-SnackbarLayout高度]
 
         // Make sure that any current animation is cancelled
         if (mFabTranslationYAnimator != null && mFabTranslationYAnimator.isRunning()) {
@@ -82,8 +82,7 @@ public static class Behavior extends CoordinatorLayout.Behavior<FloatingActionBu
         }
 
         if (fab.isShown() && Math.abs(currentTransY - targetTransY) > (fab.getHeight() * 0.667f)) {
-            // If the FAB will be travelling by more than 2/3 of it's height, let's animate it instead
-            // 如果fab
+            //如果Fab需要进行的位移操作到达高度的2/3的时候就使用动画进行滑动
             if (mFabTranslationYAnimator == null) {
                 mFabTranslationYAnimator = ViewUtils.createAnimator();
                 mFabTranslationYAnimator.setInterpolator( AnimationUtils.FAST_OUT_SLOW_IN_INTERPOLATOR);
@@ -103,14 +102,14 @@ public static class Behavior extends CoordinatorLayout.Behavior<FloatingActionBu
 
         mFabTranslationY = targetTransY;
     }
-    //获取和SnackbarLayout之间的偏移量，这里一般都是0吧
+    //获取和SnackbarLayout之间的偏移量，范围是[0,-SnackbarLayout高度]
     private float getFabTranslationYForSnackbar(CoordinatorLayout parent,  FloatingActionButton fab) {
         float minOffset = 0;
-        final List<View> dependencies = parent.getDependencies(fab); //获取到所有依赖FloatingActionButton的子View
+        final List<View> dependencies = parent.getDependencies(fab); //获取到所有该Fab所依赖的View，最终是为了找到是否有SnackbarLayout
         for (int i = 0, z = dependencies.size(); i < z; i++) {
             final View view = dependencies.get(i);
-            if (view instanceof Snackbar.SnackbarLayout && parent.doViewsOverlap(fab, view)) { //如果已经和SnackbarLayout相交的情况下，计算偏移量，前提是SnackbarLayout依赖Fab
-                minOffset = Math.min(minOffset,ViewCompat.getTranslationY(view) - view.getHeight());
+            if (view instanceof Snackbar.SnackbarLayout && parent.doViewsOverlap(fab, view)) { //如果已经和SnackbarLayout相交的情况下，计算偏移量
+                minOffset = Math.min(minOffset,ViewCompat.getTranslationY(view) - view.getHeight()); //SnackbarLayout出现的时候，translationY为0,隐藏的时候是translationY它的高度，所以这个值范围是[0,-SnackbarLayout高度]
             }
         }
 

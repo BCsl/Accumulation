@@ -2,7 +2,7 @@
 
 ## 以CoordinaryLayout来分析
 
-`CoordinaryLayout`实现了`NestedScrollingParent`接口，为使得`Behavior`类能封装简化处理嵌套滚动的操作，所以在这方面实际上`CoordinaryLayout`是`Behavior`的一个代理类
+`CoordinaryLayout`实现了`NestedScrollingParent`接口，为使得`Behavior`类能封装简化处理嵌套滚动的操作，所以在这方面实际上`CoordinaryLayout`是`Behavior`的一个代理类，所以`Behavior`实际上是一个`NestedScrollingParent`
 
 `Behavior`类关于嵌套滚动的方法如下
 

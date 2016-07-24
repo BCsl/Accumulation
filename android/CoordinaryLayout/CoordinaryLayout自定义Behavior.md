@@ -22,6 +22,8 @@
 #### 依赖的判断
 
 ```java
+LayoutParam.class
+
 boolean dependsOn(CoordinatorLayout parent, View child, View dependency) {
     return dependency == mAnchorDirectChild|| (mBehavior != null && mBehavior.layoutDependsOn(parent, child, dependency));
 }
@@ -29,7 +31,7 @@ boolean dependsOn(CoordinatorLayout parent, View child, View dependency) {
 
 其中`Behavior`的初始化比较简单，通过setter或者xml指定通过反射实例化；Anchor也是通过通过setter或者xml指定，但是为了不需要每次都根据ID通过`findViewById`去解析出AnchorView，所以会使用`mAnchorView`变量缓存好，需要注意的是这个AnchorView不可以是起所在`CoordinatorLayout`，另外也不可以是当前View的一个子View，变量`mAnchorDirectChild`记录的就是AnchorView的所属的`ViewGroup`或自身（当它是`CoordinatorLayout`的子View的时候）
 
-CoordinatorLayout中维护了一个`mDependencySortedChildren`列表，里面含有所有的子View，按依赖关系排序，被依赖者排在前面，会在每次测量前重新排序，确保处理的顺序是**先处理被依赖的View**
+CoordinatorLayout中维护了一个`mDependencySortedChildren`列表，里面含有所有的子View，按依赖关系排序，被依赖者排在前面，会在每次测量前重新排序，确保处理的顺序是**被依赖的View会先被measure和layout**
 
 ```java
 final Comparator<View> mLayoutDependencyComparator = new Comparator<View>() {

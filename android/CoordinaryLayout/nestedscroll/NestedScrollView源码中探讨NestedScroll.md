@@ -125,3 +125,9 @@ onTouchEvent (MotionEvent ev){
 Child滑动以后，会调用`dispatchNestedScroll()`，回调到Parent的`onNestedScroll()`，这里就是Child滑动后，剩下的给Parent处理，也就是后于Child滑动
 
 最后，滑动结束Child调用`stopNestedScroll`，回调Parent的`onStopNestedScroll()`表示本次处理结束
+
+## 小结
+
+NestedScroll的机制是这样的，当子View在处理滑动事件之前，先告诉自己的父View是否需要先处理这次滑动事件，父View处理完之后，告诉子View它处理的多少滑动距离，剩下的还是交给子View自己来处理
+
+你也可以实现这样的一套机制，父View拦截所有事件，然后分发给需要的子View来处理，然后剩余的自己来处理，但是这样就做会使得逻辑处理更复杂，因为事件的传递本来就由外先内传递到子View，处理机制是由内向外，由子View先来处理事件本来就是遵守默认规则的

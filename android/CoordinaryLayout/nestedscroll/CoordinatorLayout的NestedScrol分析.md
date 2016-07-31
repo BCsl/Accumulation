@@ -1,8 +1,8 @@
 # NestedScroll的一点分析
 
-## 以CoordinaryLayout来分析
+## 以CoordiantorLayout来分析
 
-`CoordinaryLayout`实现了`NestedScrollingParent`接口，为使得`Behavior`类能封装简化处理嵌套滚动的操作，所以在这方面实际上`CoordinaryLayout`是`Behavior`的一个代理类，所以`Behavior`实际上是一个`NestedScrollingParent`
+`CoordiantorLayout`实现了`NestedScrollingParent`接口，为使得`Behavior`类能封装简化处理嵌套滚动的操作，所以在这方面实际上`CoordiantorLayout`是`Behavior`的一个代理类，所以`Behavior`实际上是一个`NestedScrollingParent`
 
 `Behavior`类关于嵌套滚动的方法如下
 
@@ -14,20 +14,20 @@
 - onNestedFling ： void
 - onNestedPreFling ： void
 
-以上这些方法对应了`NestedScrollingParent`接口的方法，只是再参数上稍有不同，且都会在`CoordinaryLayout`实现`NestedScrollingParent`接口的每个方法中作出相应回调，
+以上这些方法对应了`NestedScrollingParent`接口的方法，只是再参数上稍有不同，且都会在`CoordiantorLayout`实现`NestedScrollingParent`接口的每个方法中作出相应回调，
 
 ```java
 public class CoordinatorLayout extends ViewGroup implements NestedScrollingParent {
   //.....
 
-//CoordinaryLayout的成员变量
+//CoordiantorLayout的成员变量
 private final NestedScrollingParentHelper mNestedScrollingParentHelper = new NestedScrollingParentHelper(this);
 
    // 参数child:当前实现`NestedScrollingParent`的ViewParent包含触发嵌套滚动的直接子view对象
    // 参数target:触发嵌套滚动的view  (在这里如果不涉及多层嵌套的话,child和target)是相同的
    // 参数nestedScrollAxes:就是嵌套滚动的滚动方向了.垂直或水平方法
    //返回参数代表当前ViewParent是否可以触发嵌套滚动操作
-   //CoordinaryLayout的实现上是交由子View的Behavior来决定，并回调了各个acceptNestedScroll方法，告诉它们处理结果
+   //CoordiantorLayout的实现上是交由子View的Behavior来决定，并回调了各个acceptNestedScroll方法，告诉它们处理结果
     public boolean onStartNestedScroll(View child, View target, int nestedScrollAxes) {
         boolean handled = false;
 
@@ -49,8 +49,8 @@ private final NestedScrollingParentHelper mNestedScrollingParentHelper = new Nes
     }
     //onStartNestedScroll返回true才会触发这个方法
     //参数和onStartNestedScroll方法一样
-    //按照官方文档的指示，CoordinaryLayout有一个NestedScrollingParentHelper类型的成员变量，并把这个方法交由它处理
-    //同样，这里也是需要CoordinaryLayout遍历子View，对可以嵌套滚动的子View回调Behavior#onNestedScrollAccepted方法
+    //按照官方文档的指示，CoordiantorLayout有一个NestedScrollingParentHelper类型的成员变量，并把这个方法交由它处理
+    //同样，这里也是需要CoordiantorLayout遍历子View，对可以嵌套滚动的子View回调Behavior#onNestedScrollAccepted方法
     public void onNestedScrollAccepted(View child, View target, int nestedScrollAxes) {
         mNestedScrollingParentHelper.onNestedScrollAccepted(child, target, nestedScrollAxes);
         mNestedScrollingDirectChild = child;

@@ -2,13 +2,15 @@
 
 ## 前言&效果预览
 
-最近几个周末基本在研究CoordinatorLayout控件和自定义Behavior当中，这期间看了不少这方面的知识，有关于CoordinatorLayout使用的文章，CoordinatorLayout的源码分析文章等等，轻轻松松入门虽然简单，无耐于网上介绍的一些例子实在是太简单，很多东西都是草草带过，尤其是关于NestedScroll效果这方面的，最后发现自己到头来其实还是一头雾水，当然，自己在周末的时候效率的确不高，干扰因素也多。但无意中发现了一篇通过自定义View的方式实现的仿UC浏览器主页的文章，顿时有了使用自定义Behavior实现这样的效果的想法，而且这种方式在我看来应该会更简单，这过程看了很多这方面的源码CoordinatorLayout、NestedScrollView、SwipeDismissBehavior、FloatingActionButton.Behavior、AppBarLayout.Behavior等，于是有了今天的这篇文章。忆当年，自己也曾经在UC浏览器实习过大半年的时间，UC也是自己一直除了QQ从塞班时代至今一直使用的APP了，只怪自己当时有点作死。。。。咳咳，扯多了，还是直接来看效果吧，因为文章比较长，不先放个效果图，估计没多少人能耐心看完。
+最近几个周末基本在研究CoordinatorLayout控件和自定义Behavior当中，这期间看了不少这方面的知识，有关于CoordinatorLayout使用的文章，CoordinatorLayout的源码分析文章等等，轻轻松松入门虽然简单，无耐于网上介绍的一些例子实在是太简单，很多东西都是草草带过，尤其是关于NestedScroll效果这方面的，最后发现自己到头来其实还是一头雾水，当然，自己在周末的时候效率的确不高，干扰因素也多。但无意中发现了一篇通过自定义View的方式实现的[仿UC浏览器主页的文章]()（大家也可以看看，对于自定义View也是有帮助的），顿时有了使用自定义Behavior实现这样的效果的想法，而且这种方式在我看来应该会更简单，于是看了很多这方面的源码CoordinatorLayout、NestedScrollView、SwipeDismissBehavior、FloatingActionButton.Behavior、AppBarLayout.Behavior等，也是有所顿悟，于是有了今天的这篇文章。忆当年，自己也曾经在UC浏览器实习过大半年的时间，UC也是自己一直除了QQ从塞班时代至今一直使用的APP了，只怪自己当时有点作死。。。。咳咳，扯多了，还是直接来看效果吧，因为文章比较长，不先放个效果图，估计没多少人能耐心看完（即使放了，估计也没多少能撑着看完）
 
-## 揭开NestedScroll的原理
+![效果](https://github.com/BCsl/GoogleWidget/blob/master/distribution/NestedScroll2.gif)
 
-网上不少写文章写到自定义Behavior的实现方式有两种形式，其中一种是实现NestedScrolling效果的，需要关注重写`onStartNestedScroll`和`onNestedPreScroll`等一系列带`Nested`字段的方法，当你一看这样的一个方法`onNestedScroll(CoordinatorLayout coordinatorLayout, V child, View target,int dxConsumed, int dyConsumed, int dxUnconsumed, int dyUnconsumed)`是有多少个参数的时候，你通常会**一脸懵逼图**，就算你搞懂了这里的每个参数的意思，你还是会有所疑问，这样的一大堆方法是在什么时候调用的，这个时候，你首先需要弄懂的是Android5.0开始提供一套支持嵌套滑动效果的机制
+## 揭开NestedScrolling的原理
 
-NestedScrolling提供了一套父View和子View滑动交互机制。要完成这样的交互，父View需要实现`NestedScrollingParent`接口，而子View需要实现`NestedScrollingChild`接口，系统提供的`NestedScrollView`控件就实现了这两个接口，千万不要被这两个接口这么多的方法唬住了，这两个接口都有一个`NestedScrolling[Parent,Children]Helper`辅助类来帮助处理的大部分逻辑，它们之间关系如下，
+网上不少写文章写到自定义Behavior的实现方式有两种形式，其中一种是实现NestedScrolling效果的，需要关注重写`onStartNestedScroll`和`onNestedPreScroll`等一系列带`Nested`字段的方法，当你一看这样的一个方法`onNestedScroll(CoordinatorLayout coordinatorLayout, V child, View target,int dxConsumed, int dyConsumed, int dxUnconsumed, int dyUnconsumed)`是有多少个参数的时候，你通常会一脸懵逼图，就算你搞懂了这里的每个参数的意思，你还是会有所疑问，这样的一大堆方法是在什么时候调用的，这个时候，你首先需要弄懂的是Android5.0开始提供的支持嵌套滑动效果的机制
+
+NestedScrolling提供了一套父View和子View滑动交互机制。要完成这样的交互，父View需要实现`NestedScrollingParent`接口，而子View需要实现`NestedScrollingChild`接口，系统提供的`NestedScrollView`控件就实现了这两个接口，千万不要被这两个接口这么多的方法唬住了，这两个接口都有一个`NestedScrolling[Parent,Children]Helper`辅助类来帮助处理的大部分逻辑，它们之间关系如下 ![NestedScrolling]()
 
 ### 实现NestedScrollingChild接口
 
@@ -16,7 +18,7 @@ NestedScrolling提供了一套父View和子View滑动交互机制。要完成这
 
 需要做的就是，如果要准备开始滑动了，需要告诉Parent，Child要准备进入滑动状态了，调用`startNestedScroll()`。Child在滑动之前，先问一下你的Parent是否需要滑动，也就是调用 `dispatchNestedPreScroll()`。如果父类消耗了部分滑动事件，Child需要重新计算一下父类消耗后剩下给Child的滑动距离余量。然后，Child自己进行余下的滑动。最后，如果滑动距离还有剩余，Child就再问一下，Parent是否需要在继续滑动你剩下的距离，也就是调用 `dispatchNestedScroll()`，大概就是这么一回事，当然还还会有和`scroll`类似的`fling`系列方法，但我们这里可以先忽略一下
 
-来看看`NestedScrollView`的`NestedScrollingChild`接口实现都是交给辅助类`NestedScrollingChildHelper`来处理的，是否需要进行额外的一些操作要根据实际情况来定
+`NestedScrollView`的`NestedScrollingChild`接口实现都是交给辅助类`NestedScrollingChildHelper`来处理的，是否需要进行额外的一些操作要根据实际情况来定
 
 ```java
 // NestedScrollingChild
@@ -77,9 +79,11 @@ public boolean dispatchNestedPreFling(float velocityX, float velocityY) {
 }
 ```
 
+实现`NestedScrollingChild`接口挺简单的不是吗？但还需要我们决定什么时候进行调用，和调用那些方法
+
 #### startNestedScroll和stopNestedScroll的调用
 
-一般配合`stopNestedScroll`使用，`startNestedScroll`会再接收到`ACTION_DOWN`的时候调用，`stopNestedScroll`会在接收到`ACTION_UP|ACTION_CANCEL`的时候调用 伪代码应该是这样
+`startNestedScroll`配合`stopNestedScroll`使用，`startNestedScroll`会再接收到`ACTION_DOWN`的时候调用，`stopNestedScroll`会在接收到`ACTION_UP|ACTION_CANCEL`的时候调用，`NestedScrollView`中的伪代码是这样
 
 ```java
 onInterceptTouchEvent | onTouchEvent (MotionEvent ev){
@@ -93,7 +97,7 @@ onInterceptTouchEvent | onTouchEvent (MotionEvent ev){
 }
 ```
 
-`NestedScrollingChildHelper`处理`startNestedScroll`方法，可以看出可能会调用Parent的`onStartNestedScroll`和`onNestedScrollAccepted`方法，只要Parent愿意优先处理这次的滑动事件，在介绍的时候Parent还会收到`onStopNestedScroll`回调
+`NestedScrollingChildHelper`处理`startNestedScroll`方法，可以看出可能会调用Parent的`onStartNestedScroll`和`onNestedScrollAccepted`方法，只要Parent愿意优先处理这次的滑动事件，在结束的时候Parent还会收到`onStopNestedScroll`回调
 
 ```java
 public boolean startNestedScroll(int axes) {
@@ -754,7 +758,7 @@ private boolean performIntercept(MotionEvent ev, final int type) {
         // Don't keep going if we're not allowing interaction below this.
         // Setting newBlock will make sure we cancel the rest of the behaviors.
         final boolean wasBlocking = lp.didBlockInteraction();
-        final boolean isBlocking = lp.isBlockingInteractionBelow(this, child);
+        final boolean isBlocking = lp.isBlockingInteractionBelow(this, child); //behaviors是否拦截事件
         newBlock = isBlocking && !wasBlocking;
         if (isBlocking && !newBlock) {
             // Stop here since we don't have anything more to cancel - we already did
@@ -762,17 +766,544 @@ private boolean performIntercept(MotionEvent ev, final int type) {
             break;
         }
     }
-
     topmostChildList.clear();
-
     return intercepted;
 }
 ```
 
+### 小结
+
+以上，基本可以理清`CoordinatorLayout`的机制，一个View如何监听到依赖View的变化，和`CoordinatorLayout`中的`NestedScrollingChild`实现NestedScroll的机制，触摸事件又是如何被`Behavior`拦截和处理，另外还有测量和布局我在这里并没有提及，但基本就是按照依赖关系排序，遍历子View，询问它们的`Behavior`是否需要处理，大家可以翻翻源码，这样可以有更深刻的体会，有了这些知识，我们基本就可以根据需求来自定义自己的`Behavior`了，下面也带大家来实践下我是如何用自定义`Behavior`实现UC主页的
+
 ## UC主页实现分析
+
+先来看看UC浏览器的主页的效果图![]()**插UC效果图**
+
+可以看到有一共有4种元素的交互，这里分别称为Title元素、Header元素、Tab元素和新闻列表元素
+
+在往上拖动列表页而还没进入到新闻阅读状态的时候，我们需要一个容器来完全消费掉这个拖动事件，避免列表项向上滚动，同时Tab和Title则分别从列表顶部和`CoordinatorLayout`顶部出现，Header也有往上偏移一段距离，而到底谁来扮演这个角色呢？我们需要先确定它们之间的依赖关系
 
 ### 确定依赖关系
 
-### 说得再多也不如直接写代码
+在编码之前，首先还需要确定这些元素的依赖关系，看下图来比较下前后的状态，**插入前后对比图**
+
+根据前后效果的对比图，我们可以使Header作为唯一被依赖的View来处理，列表容器和Tab容器随着Header上移动而上移动，Title随着Header的上移动而下移出现，在这个完整的过程中，我们定义Header一共向上移动了offestHeader的高度，Title向下偏移了Title这个容器的高度，Tab则向上偏移了Tab这个容器 的高度，而列表偏移的高度是[offestHeader - Title容器高度 - Tab容器高度]
+
+### 实现头部和列表的NestedScroll效果
+
+首先考虑列表页，因为列表页可以左右切换，所以这里使用ViewPager作为列表页的容器，列表页需要放置在Header之下，且随着Header的上移收缩，列表页也需要上移，在这里我们首先需要解决两个问题
+
+- 1.列表页置于Header之下
+- 2.列表页上移留白问题
+
+首先来解决第一个问题-列表页置于Header之下，`CoordinatorLayout`继承来自`ViewGroup`，默认的布局行为更像是一个`FrameLayout`，不是`RelativeLayout`所以并不能用`layout_below`等属性来控制它的相对位置，而某些情况下，我们可以给Header的高度设定一个准确值，例如250dip，那么我们的的列表页的marginTop设置为250dip就好了，但是通常，我们的Header高度是不定的，所以我们需要一种能够适配这种变化的方法，所以我能想到的就是重写列表页的layout过程，`Behavior`提供了`onLayoutChild`方法可以让我们实现，很好；接着来思考列表页上移留白问题，在`CoordinatorLayout`测量布局完成后的状态结果如图1，此时列表高度为H，**插测量布局完的效果图**，但随着Header上移H2个高度的时候，列表也随着移动，但是高度还是H，效果不言而喻，所以，我们需要在子View测量的时候，添加上Header上移的高度H2，下面来看代码，其实这就和系统`AppBarLayout`下的滚动列表处理一样的，我们会在`AppBarLayout`下放置的View设定一个这样的`app:layout_behavior="@string/appbar_scrolling_view_behavior"`Behavior属性，所以提供已经提供了这样的一个基类来处理了，只不过它是包级私有，需要我们另外copy一份出来，来看看代码吧，继承自同样sdk提供的包级私有的`ViewOffsetBehavior`类，`ViewOffsetBehavior`使用`ViewOffsetHelper`方便对View进行偏移处理，代码不多且功能也没使用到，所以就不贴了，可以自己看
+
+```java
+
+public abstract class HeaderScrollingViewBehavior extends ViewOffsetBehavior<View> {
+    private final Rect mTempRect1 = new Rect();
+    private final Rect mTempRect2 = new Rect();
+
+    private int mVerticalLayoutGap = 0;
+    private int mOverlayTop;
+
+    public HeaderScrollingViewBehavior() {
+    }
+
+    public HeaderScrollingViewBehavior(Context context, AttributeSet attrs) {
+        super(context, attrs);
+    }
+
+    @Override
+    public boolean onMeasureChild(CoordinatorLayout parent, View child, int parentWidthMeasureSpec, int widthUsed, int parentHeightMeasureSpec, int heightUsed) {
+        final int childLpHeight = child.getLayoutParams().height;
+        if (childLpHeight == ViewGroup.LayoutParams.MATCH_PARENT || childLpHeight == ViewGroup.LayoutParams.WRAP_CONTENT) {
+            // If the menu's height is set to match_parent/wrap_content then measure it with the maximum visible height
+            final List<View> dependencies = parent.getDependencies(child);
+            final View header = findFirstDependency(dependencies);
+            if (header != null) {
+                if (ViewCompat.getFitsSystemWindows(header) && !ViewCompat.getFitsSystemWindows(child)) {
+                    // If the header is fitting system windows then we need to also, otherwise we'll get CoL's compatible measuring
+                    ViewCompat.setFitsSystemWindows(child, true);
+                    if (ViewCompat.getFitsSystemWindows(child)) {
+                        // If the set succeeded, trigger a new layout and return true
+                        child.requestLayout();
+                        return true;
+                    }
+                }
+                if (ViewCompat.isLaidOut(header)) {
+                    int availableHeight = View.MeasureSpec.getSize(parentHeightMeasureSpec);
+                    if (availableHeight == 0) {
+                        // If the measure spec doesn't specify a size, use the current height
+                        availableHeight = parent.getHeight();
+                    }
+                    final int height = availableHeight - header.getMeasuredHeight() + getScrollRange(header);
+                    final int heightMeasureSpec = View.MeasureSpec.makeMeasureSpec(height,
+                            childLpHeight == ViewGroup.LayoutParams.MATCH_PARENT ? View.MeasureSpec.EXACTLY : View.MeasureSpec.AT_MOST);
+
+                    // Now measure the scrolling view with the correct height
+                    parent.onMeasureChild(child, parentWidthMeasureSpec, widthUsed, heightMeasureSpec, heightUsed);
+
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    @Override
+    protected void layoutChild(final CoordinatorLayout parent, final View child, final int layoutDirection) {
+        final List<View> dependencies = parent.getDependencies(child);
+        final View header = findFirstDependency(dependencies);
+
+        if (header != null) {
+            final CoordinatorLayout.LayoutParams lp = (CoordinatorLayout.LayoutParams) child.getLayoutParams();
+            final Rect available = mTempRect1;
+            available.set(parent.getPaddingLeft() + lp.leftMargin, header.getBottom() + lp.topMargin,
+                    parent.getWidth() - parent.getPaddingRight() - lp.rightMargin,
+                    parent.getHeight() + header.getBottom() - parent.getPaddingBottom() - lp.bottomMargin);
+
+            final Rect out = mTempRect2;
+            GravityCompat.apply(resolveGravity(lp.gravity), child.getMeasuredWidth(), child.getMeasuredHeight(), available, out, layoutDirection);
+
+            final int overlap = getOverlapPixelsForOffset(header);
+
+            child.layout(out.left, out.top - overlap, out.right, out.bottom - overlap);
+            mVerticalLayoutGap = out.top - header.getBottom();
+        } else {
+            // If we don't have a dependency, let super handle it
+            super.layoutChild(parent, child, layoutDirection);
+            mVerticalLayoutGap = 0;
+        }
+    }
+
+    float getOverlapRatioForOffset(final View header) {
+        return 1f;
+    }
+
+    final int getOverlapPixelsForOffset(final View header) {
+        return mOverlayTop == 0 ? 0 : MathUtils.constrain(Math.round(getOverlapRatioForOffset(header) * mOverlayTop), 0, mOverlayTop);
+
+    }
+
+    private static int resolveGravity(int gravity) {
+        return gravity == Gravity.NO_GRAVITY ? GravityCompat.START | Gravity.TOP : gravity;
+    }
+
+    //需要子类来实现，从CoordinatorLayout中找到第一个child view依赖的View
+    protected abstract View findFirstDependency(List<View> views);
+
+    //返回Header可以收缩的范围，默认为Header高度，完全隐藏
+    protected int getScrollRange(View v) {
+        return v.getMeasuredHeight();
+    }
+
+    /**
+     * The gap between the top of the scrolling view and the bottom of the header layout in pixels.
+     */
+    final int getVerticalLayoutGap() {
+        return mVerticalLayoutGap;
+    }
+
+    /**
+     * Set the distance that this view should overlap any {@link AppBarLayout}.
+     *
+     * @param overlayTop the distance in px
+     */
+    public final void setOverlayTop(int overlayTop) {
+        mOverlayTop = overlayTop;
+    }
+
+    /**
+     * Returns the distance that this view should overlap any {@link AppBarLayout}.
+     */
+    public final int getOverlayTop() {
+        return mOverlayTop;
+    }
+
+}
+```
+
+这个基类的代码还是很好理解的，因为之前就说过了，正常来说被依赖的View会优先于依赖它的View处理，所以需要依赖的View可以在measure/layout的时候，找到依赖的View并获取到它的测量/布局的信息，这里的处理就是依靠着这种关系来实现的
+
+我们的实现类，需要重写的除了抽象方法`findFirstDependency`外，还需要重写`getScrollRange`，我们把Header的Id`id_uc_news_header_pager`定义在`ids.xml`资源文件内，方便依赖的判断；至于缩放的高度，根据 **结果图** 得知是`Header高度 - Title高度 - Tab高度`，把Title高度`uc_news_header_title_height`和Tab视图的高度`uc_news_tabs_height`也定义在`dimens.xml`，得出如下代码
+
+```java
+
+public class UcNewsContentBehavior extends HeaderScrollingViewBehavior {
+    //省略构造信息
+    @Override
+    public boolean layoutDependsOn(CoordinatorLayout parent, View child, View dependency) {
+        return isDependOn(dependency);
+    }
+
+    @Override
+    public boolean onDependentViewChanged(CoordinatorLayout parent, View child, View dependency) {
+        //省略，还未讲到
+    }
+    //通过ID判读，找到第一个依赖
+    @Override
+    protected View findFirstDependency(List<View> views) {
+        for (int i = 0, z = views.size(); i < z; i++) {
+            View view = views.get(i);
+            if (isDependOn(view))
+                return view;
+        }
+        return null;
+    }
+
+    @Override
+    protected int getScrollRange(View v) {
+        if (isDependOn(v)) {
+            return Math.max(0, v.getMeasuredHeight() - getFinalHeight());
+        } else {
+            return super.getScrollRange(v);
+        }
+    }
+
+    private int getFinalHeight() {
+        return DemoApplication.getAppContext().getResources().getDimensionPixelOffset(R.dimen.uc_news_tabs_height) + DemoApplication.getAppContext().getResources().getDimensionPixelOffset(R.dimen.uc_news_header_title_height);
+    }
+    //依赖的判断
+    private boolean isDependOn(View dependency) {
+        return dependency != null && dependency.getId() == R.id.id_uc_news_header_pager;
+    }
+}
+```
+
+好了，列表页初始状态完成了，接着列表页需要根据Header的上移而上移，上移使用`TranslationY`属性来控制即可，在`dimens.xml`中定义好Header的偏移范围值`uc_news_header_pager_offset`，当Header偏移了`uc_news_header_pager_offset`的时候，列表页的向上偏移值应该是`getScrollRange()`方法计算出的结果，那么，在接受到`onDependentViewChanged`的时候，列表页的`TranslationY`计算公式为：header.getTranslationY() / H(uc_news_header_pager_offset) * getScrollRange
+
+列表页的`Behavior`最终代码如下：
+
+```java
+
+//列表页的Behavior
+public class UcNewsContentBehavior extends HeaderScrollingViewBehavior {
+    //...省略构造信息
+    @Override
+    public boolean layoutDependsOn(CoordinatorLayout parent, View child, View dependency) {
+        return isDependOn(dependency);
+    }
+    @Override
+    public boolean onDependentViewChanged(CoordinatorLayout parent, View child, View dependency) {
+        offsetChildAsNeeded(parent, child, dependency);
+        return false;
+    }
+
+    private void offsetChildAsNeeded(CoordinatorLayout parent, View child, View dependency) {
+        child.setTranslationY((int) (-dependency.getTranslationY() / (getHeaderOffsetRange() * 1.0f) * getScrollRange(dependency)));
+
+    }
+
+    @Override
+    protected View findFirstDependency(List<View> views) {
+        for (int i = 0, z = views.size(); i < z; i++) {
+            View view = views.get(i);
+            if (isDependOn(view))
+                return view;
+        }
+        return null;
+    }
+
+    @Override
+    protected int getScrollRange(View v) {
+        if (isDependOn(v)) {
+            return Math.max(0, v.getMeasuredHeight() - getFinalHeight());
+        } else {
+            return super.getScrollRange(v);
+        }
+    }
+
+    private int getHeaderOffsetRange() {
+        return DemoApplication.getAppContext().getResources().getDimensionPixelOffset(R.dimen.uc_news_header_pager_offset);
+    }
+
+    private int getFinalHeight() {
+        return DemoApplication.getAppContext().getResources().getDimensionPixelOffset(R.dimen.uc_news_tabs_height) + DemoApplication.getAppContext().getResources().getDimensionPixelOffset(R.dimen.uc_news_header_title_height);
+    }
+    //依赖的判断
+    private boolean isDependOn(View dependency) {
+        return dependency != null && dependency.getId() == R.id.id_uc_news_header_pager;
+    }
+}
+```
+
+第一个难啃的骨头终于搞定，接着是来自Header的挑战
+
+Header的滚动事件来源于列表页中的`NestedScrollingChild`，所以Header的`Behavior`需要重写于NestedScroll相关的方法，不仅仅需要拦截Scroll事件还需要拦截Fling事件，通过改变`TranslationY`值来"消费"掉这些事件，另外需要为该`Behavior`定义两种状态，打开和关闭，而如果在滑动中途手指离开（ACTION_UP或者ACTION_CANCEL），需要根据偏移量来判断进入打开还是关闭状态，这里我使用Scroller+Runnalbe来进行动画效果，因为直接使用`ViewPropertyAnimator`得到的结果不太理想，具体可以看代码的注释，就不细讲了
+
+```java
+public class UcNewsHeaderPagerBehavior extends ViewOffsetBehavior {
+    private static final String TAG = "UcNewsHeaderPager";
+    public static final int STATE_OPENED = 0;
+    public static final int STATE_CLOSED = 1;
+    public static final int DURATION_SHORT = 300;
+    public static final int DURATION_LONG = 600;
+
+    private int mCurState = STATE_OPENED;
+
+    private OverScroller mOverScroller;
+
+    //...省略构造信息
+
+    private void init() { //构造器中调用
+        mOverScroller = new OverScroller(DemoApplication.getAppContext());
+    }
+
+    @Override
+    protected void layoutChild(CoordinatorLayout parent, View child, int layoutDirection) {
+        super.layoutChild(parent, child, layoutDirection);
+    }
+
+    @Override
+    public boolean onStartNestedScroll(CoordinatorLayout coordinatorLayout, View child, View directTargetChild, View target, int nestedScrollAxes) {
+        //拦截垂直方向上的滚动事件且当前状态是打开的并且还可以继续向上收缩
+        return (nestedScrollAxes & ViewCompat.SCROLL_AXIS_VERTICAL) != 0 && canScroll(child, 0) && !isClosed(child);
+    }
+
+    private boolean canScroll(View child, float pendingDy) {
+        int pendingTranslationY = (int) (child.getTranslationY() - pendingDy);
+        if (pendingTranslationY >= getHeaderOffsetRange() && pendingTranslationY <= 0) {
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    public boolean onNestedPreFling(CoordinatorLayout coordinatorLayout, View child, View target, float velocityX, float velocityY) {
+        // consumed the flinging behavior until Closed
+        return !isClosed(child);
+    }
+
+    private boolean isClosed(View child) {
+        boolean isClosed = child.getTranslationY() == getHeaderOffsetRange();
+        return isClosed;
+    }
+
+    public boolean isClosed() {
+        return mCurState == STATE_CLOSED;
+    }
+
+    private void changeState(int newState) {
+        if (mCurState != newState) {
+            mCurState = newState;
+        }
+    }
+
+    @Override
+    public boolean onInterceptTouchEvent(CoordinatorLayout parent, final View child, MotionEvent ev) {
+        if (ev.getAction() == MotionEvent.ACTION_UP && !isClosed()) {
+            handleActionUp(parent, child);
+        }
+        return super.onInterceptTouchEvent(parent, child, ev);
+    }
+
+    @Override
+    public void onNestedPreScroll(CoordinatorLayout coordinatorLayout, View child, View target, int dx, int dy, int[] consumed) {
+        super.onNestedPreScroll(coordinatorLayout, child, target, dx, dy, consumed);
+        //dy>0 scroll up;dy<0,scroll down
+        float halfOfDis = dy / 4.0f; //消费掉其中的4分之1，不至于滑动效果太灵敏
+        if (!canScroll(child, halfOfDis)) {
+            child.setTranslationY(halfOfDis > 0 ? getHeaderOffsetRange() : 0);
+        } else {
+            child.setTranslationY(child.getTranslationY() - halfOfDis);
+        }
+        //只要开始拦截，就需要把所有Scroll事件消费掉
+        consumed[1] = dy;
+    }
+
+    //Header偏移量
+    private int getHeaderOffsetRange() {
+        return DemoApplication.getAppContext().getResources().getDimensionPixelOffset(R.dimen.uc_news_header_pager_offset);
+    }
+
+
+    private void handleActionUp(CoordinatorLayout parent, final View child) {
+        if (mFlingRunnable != null) {
+            child.removeCallbacks(mFlingRunnable);
+            mFlingRunnable = null;
+        }
+        mFlingRunnable = new FlingRunnable(parent, child);
+        if (child.getTranslationY() < getHeaderOffsetRange() / 3.0f) {
+            mFlingRunnable.scrollToClosed(DURATION_SHORT);
+        } else {
+            mFlingRunnable.scrollToOpen(DURATION_SHORT);
+        }
+
+    }
+    //结束动画的时候调用，并改变状态
+    private void onFlingFinished(CoordinatorLayout coordinatorLayout, View layout) {
+        changeState(isClosed(layout) ? STATE_CLOSED : STATE_OPENED);
+    }
+
+
+    private FlingRunnable mFlingRunnable;
+
+    /**
+     * For animation , Why not use {@link android.view.ViewPropertyAnimator } to play animation is of the
+     * other {@link android.support.design.widget.CoordinatorLayout.Behavior} that depend on this could not receiving the correct result of
+     * {@link View#getTranslationY()} after animation finished for whatever reason that i don't know
+     */
+    private class FlingRunnable implements Runnable {
+        private final CoordinatorLayout mParent;
+        private final View mLayout;
+
+        FlingRunnable(CoordinatorLayout parent, View layout) {
+            mParent = parent;
+            mLayout = layout;
+        }
+
+        public void scrollToClosed(int duration) {
+            float curTranslationY = ViewCompat.getTranslationY(mLayout);
+            float dy = getHeaderOffsetRange() - curTranslationY;
+            //这里做了些处理，避免有时候会有1-2Px的误差结果，导致最终效果不好
+            mOverScroller.startScroll(0, Math.round(curTranslationY - 0.1f), 0, Math.round(dy + 0.1f), duration);
+            start();
+        }
+
+        public void scrollToOpen(int duration) {
+            float curTranslationY = ViewCompat.getTranslationY(mLayout);
+            mOverScroller.startScroll(0, (int) curTranslationY, 0, (int) -curTranslationY, duration);
+            start();
+        }
+
+        private void start() {
+            if (mOverScroller.computeScrollOffset()) {
+                ViewCompat.postOnAnimation(mLayout, mFlingRunnable);
+            } else {
+                onFlingFinished(mParent, mLayout);
+            }
+        }
+
+        @Override
+        public void run() {
+            if (mLayout != null && mOverScroller != null) {
+                if (mOverScroller.computeScrollOffset()) {
+                    ViewCompat.setTranslationY(mLayout, mOverScroller.getCurrY());
+                    ViewCompat.postOnAnimation(mLayout, this);
+                } else {
+                    onFlingFinished(mParent, mLayout);
+                }
+            }
+        }
+    }
+}
+```
+
+### 实现标题视图和Tab视图跟随头部的实时移动
+
+剩下Title和Tab的Behavior，相对上两个来说是比较简单的，都只需要子在`onDependentViewChanged`方法中，根据Header的变化而改变`TranslationY`值即可
+
+Title的Behavior，为了简单，Title直接设置TopMargin来使得初始状态完全偏移出父容器
+
+```java
+public class UcNewsTitleBehavior extends CoordinatorLayout.Behavior<View> {
+    //...构造信息
+
+    @Override
+    public boolean onLayoutChild(CoordinatorLayout parent, View child, int layoutDirection) {
+        // FIXME: 16/7/27 不知道为啥在XML设置-45dip,解析出来的topMargin少了1个px,所以这里用代码设置一遍
+        ((CoordinatorLayout.LayoutParams) child.getLayoutParams()).topMargin = -getTitleHeight();
+        parent.onLayoutChild(child, layoutDirection);
+        return true;
+    }
+
+    @Override
+    public boolean layoutDependsOn(CoordinatorLayout parent, View child, View dependency) {
+        return isDependOn(dependency);
+    }
+
+    @Override
+    public boolean onDependentViewChanged(CoordinatorLayout parent, View child, View dependency) {
+        offsetChildAsNeeded(parent, child, dependency);
+        return false;
+    }
+
+    private void offsetChildAsNeeded(CoordinatorLayout parent, View child, View dependency) {
+        int headerOffsetRange = getHeaderOffsetRange();
+        int titleOffsetRange = getTitleHeight();
+        if (dependency.getTranslationY() == headerOffsetRange) {
+            child.setTranslationY(titleOffsetRange); //直接设置终值，避免出现误差
+        } else if (dependency.getTranslationY() == 0) {
+            child.setTranslationY(0); //直接设置初始值
+        } else {
+            //根据Header的TranslationY值来改变自身的TranslationY
+            child.setTranslationY((int) (dependency.getTranslationY() / (headerOffsetRange * 1.0f) * titleOffsetRange));
+        }
+    }
+    //Header偏移值
+    private int getHeaderOffsetRange() {
+        return DemoApplication.getAppContext().getResources().getDimensionPixelOffset(R.dimen.uc_news_header_pager_offset);
+    }
+    //标题高度
+    private int getTitleHeight() {
+        return DemoApplication.getAppContext().getResources().getDimensionPixelOffset(R.dimen.uc_news_header_title_height);
+    }
+    //依赖判断
+    private boolean isDependOn(View dependency) {
+        return dependency != null && dependency.getId() == R.id.id_uc_news_header_pager;
+    }
+}
+```
+
+Tab初始状态需要放置在Header之下，所以还是继承自`HeaderScrollingViewBehavior`，因为指定的高度，所以LayoutParams得Mode为EXACTLY，所以在测量的时候不会被特殊处理
+
+```java
+public class UcNewsTabBehavior extends HeaderScrollingViewBehavior {
+
+    //..省略构造信息
+    @Override
+    public boolean layoutDependsOn(CoordinatorLayout parent, View child, View dependency) {
+        return isDependOn(dependency);
+    }
+
+    @Override
+    public boolean onDependentViewChanged(CoordinatorLayout parent, View child, View dependency) {
+        offsetChildAsNeeded(parent, child, dependency);
+        return false;
+    }
+
+    private void offsetChildAsNeeded(CoordinatorLayout parent, View child, View dependency) {
+        float offsetRange = dependency.getTop() + getFinalHeight() - child.getTop();
+        int headerOffsetRange = getHeaderOffsetRange();
+        if (dependency.getTranslationY() == headerOffsetRange) {
+            child.setTranslationY(offsetRange);  //直接设置终值，避免出现误差
+        } else if (dependency.getTranslationY() == 0) {
+            child.setTranslationY(0);//直接设置初始值
+        } else {
+            child.setTranslationY((int) (dependency.getTranslationY() / (getHeaderOffsetRange() * 1.0f) * offsetRange));
+        }
+    }
+
+    @Override
+    protected View findFirstDependency(List<View> views) {
+        for (int i = 0, z = views.size(); i < z; i++) {
+            View view = views.get(i);
+            if (isDependOn(view))
+                return view;
+        }
+        return null;
+    }
+
+    private int getHeaderOffsetRange() {
+        return DemoApplication.getAppContext().getResources().getDimensionPixelOffset(R.dimen.uc_news_header_pager_offset);
+    }
+
+    private int getFinalHeight() {
+        return DemoApplication.getAppContext().getResources().getDimensionPixelOffset(R.dimen.uc_news_header_title_height);
+    }
+    private boolean isDependOn(View dependency) {
+        return dependency != null && dependency.getId() == R.id.id_uc_news_header_pager;
+    }
+}
+```
+
+最后布局代码就贴了，可以到 **[GITHUB]()** 上看
+
+## 写在最后
+
+目前来说，Demo还可以有更进一步的完善，例如在打开模式的情况下，禁止列表页ViewPager的左右滑动，且设置选中的Pager位置为0并列表滚动到第一个位置，每个列表还可以增加下拉刷新功能等...但是这些都和主题`Behavior`无关，所以就不再去实现了
+
+如果你看完了文章且觉得有用，那么我希望你能顺手点个推荐/喜欢/收藏，写一篇用心的技术分享文章的确不容易（能抽这么多时间来写这篇文章，其实主要是因为这几天公寓断网了、网了、了...）
 
 ## 那些有用的参考资料

@@ -2,15 +2,17 @@
 
 ## 前言&效果预览
 
-最近几个周末基本在研究CoordinatorLayout控件和自定义Behavior当中，这期间看了不少这方面的知识，有关于CoordinatorLayout使用的文章，CoordinatorLayout的源码分析文章等等，轻轻松松入门虽然简单，无耐于网上介绍的一些例子实在是太简单，很多东西都是草草带过，尤其是关于NestedScroll效果这方面的，最后发现自己到头来其实还是一头雾水，当然，自己在周末的时候效率的确不高，干扰因素也多。但无意中发现了一篇通过自定义View的方式实现的[仿UC浏览器主页的文章]()（大家也可以看看，对于自定义View也是有帮助的），顿时有了使用自定义Behavior实现这样的效果的想法，而且这种方式在我看来应该会更简单，于是看了很多这方面的源码CoordinatorLayout、NestedScrollView、SwipeDismissBehavior、FloatingActionButton.Behavior、AppBarLayout.Behavior等，也是有所顿悟，于是有了今天的这篇文章。忆当年，自己也曾经在UC浏览器实习过大半年的时间，UC也是自己一直除了QQ从塞班时代至今一直使用的APP了，只怪自己当时有点作死。。。。咳咳，扯多了，还是直接来看效果吧，因为文章比较长，不先放个效果图，估计没多少人能耐心看完（即使放了，估计也没多少能撑着看完）
+最近几个周末基本在研究CoordinatorLayout控件和自定义Behavior当中，这期间看了不少这方面的知识，有关于CoordinatorLayout使用的文章，CoordinatorLayout的源码分析文章等等，轻轻松松入门虽然简单，无耐于网上介绍的一些例子实在是太简单，很多东西都是草草带过，尤其是关于NestedScroll效果这方面的，最后发现自己到头来其实还是一头雾水，当然，自己在周末的时候效率的确不高，干扰因素也多。但无意中发现了一篇通过自定义View的方式实现的[仿UC浏览器主页的文章](http://ittiger.cn/2016/05/26/UC%E6%B5%8F%E8%A7%88%E5%99%A8%E9%A6%96%E9%A1%B5%E6%BB%91%E5%8A%A8%E5%8A%A8%E7%94%BB%E5%AE%9E%E7%8E%B0/)（大家也可以看看，对于自定义View也是有帮助的），顿时有了使用自定义Behavior实现这样的效果的想法，而且这种方式在我看来应该会更简单，于是看了很多这方面的源码CoordinatorLayout、NestedScrollView、SwipeDismissBehavior、FloatingActionButton.Behavior、AppBarLayout.Behavior等，也是有所顿悟，于是有了今天的这篇文章。忆当年，自己也曾经在UC浏览器实习过大半年的时间，UC也是自己一直除了QQ从塞班时代至今一直使用的APP了，只怪自己当时有点作死。。。。咳咳，扯多了，还是直接来看效果吧，因为文章比较长，不先放个效果图，估计没多少人能耐心看完（即使放了，估计也没多少能撑着看完，文章特长...要不直接看[代码](https://github.com/BCsl/UcMainPagerDemo)？）
 
-![效果](https://github.com/BCsl/GoogleWidget/blob/master/distribution/NestedScroll2.gif)
+![NestedScroll2](https://raw.githubusercontent.com/BCsl/GoogleWidget/master/distribution/NestedScroll2.gif)
 
 ## 揭开NestedScrolling的原理
 
 网上不少写文章写到自定义Behavior的实现方式有两种形式，其中一种是实现NestedScrolling效果的，需要关注重写`onStartNestedScroll`和`onNestedPreScroll`等一系列带`Nested`字段的方法，当你一看这样的一个方法`onNestedScroll(CoordinatorLayout coordinatorLayout, V child, View target,int dxConsumed, int dyConsumed, int dxUnconsumed, int dyUnconsumed)`是有多少个参数的时候，你通常会一脸懵逼图，就算你搞懂了这里的每个参数的意思，你还是会有所疑问，这样的一大堆方法是在什么时候调用的，这个时候，你首先需要弄懂的是Android5.0开始提供的支持嵌套滑动效果的机制
 
-NestedScrolling提供了一套父View和子View滑动交互机制。要完成这样的交互，父View需要实现`NestedScrollingParent`接口，而子View需要实现`NestedScrollingChild`接口，系统提供的`NestedScrollView`控件就实现了这两个接口，千万不要被这两个接口这么多的方法唬住了，这两个接口都有一个`NestedScrolling[Parent,Children]Helper`辅助类来帮助处理的大部分逻辑，它们之间关系如下 ![NestedScrolling]()
+NestedScrolling提供了一套父View和子View滑动交互机制。要完成这样的交互，父View需要实现`NestedScrollingParent`接口，而子View需要实现`NestedScrollingChild`接口，系统提供的`NestedScrollView`控件就实现了这两个接口，千万不要被这两个接口这么多的方法唬住了，这两个接口都有一个`NestedScrolling[Parent,Children]Helper`辅助类来帮助处理的大部分逻辑，它们之间关系如下
+
+![NestedScrolling](https://raw.githubusercontent.com/BCsl/Accumulation/master/android/CoordinaryLayout/img/NestedScrollView.png)
 
 ### 实现NestedScrollingChild接口
 
@@ -436,6 +438,8 @@ private final NestedScrollingParentHelper mNestedScrollingParentHelper = new Nes
 
 你会发现`CoordiantorLayout`收到来自`NestedScrollingChild`的各种回调后，都是交由需要响应的`Behavior`来处理的，所以这里可以得出一个结论，`CoordiantorLayout`是`Behavior`的一个代理类，所以`Behavior`实际上也是一个`NestedScrollingParent`，另外结合`NestedScrollingChild`实现的部分来看，你很容就能搞懂这些方法参数的实际含义
 
+`CoordiantorLayout`,`Behavior`和`NestedScrollingParent`三者关系 ![NestedScroll2](https://raw.githubusercontent.com/BCsl/Accumulation/master/android/CoordinaryLayout/img/NestedScroll2.png)
+
 ### NestedScroll小结
 
 NestedScroll的机制的简版是这样的，当子View在处理滑动事件之前，先告诉自己的父View是否需要先处理这次滑动事件，父View处理完之后，告诉子View它处理的多少滑动距离，剩下的还是交给子View自己来处理
@@ -777,7 +781,9 @@ private boolean performIntercept(MotionEvent ev, final int type) {
 
 ## UC主页实现分析
 
-先来看看UC浏览器的主页的效果图![]()**插UC效果图**
+先来看看UC浏览器的主页的效果图
+
+![UC主页效果](https://raw.githubusercontent.com/BCsl/GoogleWidget/master/distribution/UcMainPager.gif)
 
 可以看到有一共有4种元素的交互，这里分别称为Title元素、Header元素、Tab元素和新闻列表元素
 
@@ -785,7 +791,9 @@ private boolean performIntercept(MotionEvent ev, final int type) {
 
 ### 确定依赖关系
 
-在编码之前，首先还需要确定这些元素的依赖关系，看下图来比较下前后的状态，**插入前后对比图**
+在编码之前，首先还需要确定这些元素的依赖关系，看下图来比较下前后的状态
+
+![状态变化](https://raw.githubusercontent.com/BCsl/Accumulation/master/android/CoordinaryLayout/img/translation.png)
 
 根据前后效果的对比图，我们可以使Header作为唯一被依赖的View来处理，列表容器和Tab容器随着Header上移动而上移动，Title随着Header的上移动而下移出现，在这个完整的过程中，我们定义Header一共向上移动了offestHeader的高度，Title向下偏移了Title这个容器的高度，Tab则向上偏移了Tab这个容器 的高度，而列表偏移的高度是[offestHeader - Title容器高度 - Tab容器高度]
 
@@ -796,7 +804,7 @@ private boolean performIntercept(MotionEvent ev, final int type) {
 - 1.列表页置于Header之下
 - 2.列表页上移留白问题
 
-首先来解决第一个问题-列表页置于Header之下，`CoordinatorLayout`继承来自`ViewGroup`，默认的布局行为更像是一个`FrameLayout`，不是`RelativeLayout`所以并不能用`layout_below`等属性来控制它的相对位置，而某些情况下，我们可以给Header的高度设定一个准确值，例如250dip，那么我们的的列表页的marginTop设置为250dip就好了，但是通常，我们的Header高度是不定的，所以我们需要一种能够适配这种变化的方法，所以我能想到的就是重写列表页的layout过程，`Behavior`提供了`onLayoutChild`方法可以让我们实现，很好；接着来思考列表页上移留白问题，在`CoordinatorLayout`测量布局完成后的状态结果如图1，此时列表高度为H，**插测量布局完的效果图**，但随着Header上移H2个高度的时候，列表也随着移动，但是高度还是H，效果不言而喻，所以，我们需要在子View测量的时候，添加上Header上移的高度H2，下面来看代码，其实这就和系统`AppBarLayout`下的滚动列表处理一样的，我们会在`AppBarLayout`下放置的View设定一个这样的`app:layout_behavior="@string/appbar_scrolling_view_behavior"`Behavior属性，所以提供已经提供了这样的一个基类来处理了，只不过它是包级私有，需要我们另外copy一份出来，来看看代码吧，继承自同样sdk提供的包级私有的`ViewOffsetBehavior`类，`ViewOffsetBehavior`使用`ViewOffsetHelper`方便对View进行偏移处理，代码不多且功能也没使用到，所以就不贴了，可以自己看
+首先来解决第一个问题-列表页置于Header之下，`CoordinatorLayout`继承来自`ViewGroup`，默认的布局行为更像是一个`FrameLayout`，不是`RelativeLayout`所以并不能用`layout_below`等属性来控制它的相对位置，而某些情况下，我们可以给Header的高度设定一个准确值，例如250dip，那么我们的的列表页的marginTop设置为250dip就好了，但是通常，我们的Header高度是不定的，所以我们需要一种能够适配这种变化的方法，所以我能想到的就是重写列表页的layout过程，`Behavior`提供了`onLayoutChild`方法可以让我们实现，很好；接着来思考列表页上移留白问题，这是因为在`CoordinatorLayout`测量布局完成后，记此时列表高度为H，但随着Header上移H2个高度的时候，列表也随着移动一定高度，但是列表高度还是H，效果不言而喻，所以，我们需要在子View测量的时候，添加上列表的最大偏移量[H2 - Title容器高度 - Tab容器高度]，下面来看代码，其实这就和系统`AppBarLayout`下的滚动列表处理一样的，我们会在`AppBarLayout`下放置的View设定一个这样的`app:layout_behavior="@string/appbar_scrolling_view_behavior"`Behavior属性，所以提供已经提供了这样的一个基类来处理了，只不过它是包级私有，需要我们另外copy一份出来，来看看代码吧，继承自同样sdk提供的包级私有的`ViewOffsetBehavior`类，`ViewOffsetBehavior`使用`ViewOffsetHelper`方便对View进行偏移处理，代码不多且功能也没使用到，所以就不贴了，可以自己看
 
 ```java
 
@@ -1298,12 +1306,17 @@ public class UcNewsTabBehavior extends HeaderScrollingViewBehavior {
 }
 ```
 
-最后布局代码就贴了，可以到 **[GITHUB]()** 上看
+最后布局代码就贴了，代码已经上传到 **[GITHUB](https://github.com/BCsl/UcMainPagerDemo)** ，可以上去看看且顺便给个star吧
 
 ## 写在最后
 
 目前来说，Demo还可以有更进一步的完善，例如在打开模式的情况下，禁止列表页ViewPager的左右滑动，且设置选中的Pager位置为0并列表滚动到第一个位置，每个列表还可以增加下拉刷新功能等...但是这些都和主题`Behavior`无关，所以就不再去实现了
 
-如果你看完了文章且觉得有用，那么我希望你能顺手点个推荐/喜欢/收藏，写一篇用心的技术分享文章的确不容易（能抽这么多时间来写这篇文章，其实主要是因为这几天公寓断网了、网了、了...）
+如果你看完了文章且觉得有用，那么我希望你能顺手点个推荐/喜欢/收藏，写一篇用心的技术分享文章的确不容易（能抽这么多时间来写这篇文章，其实主要是因为这几天公寓断网了、网了、了...这一断就一星期,所以也拖延了发布时间）
 
 ## 那些有用的参考资料
+
+- [UC浏览器首页滑动动画实现](http://ittiger.cn/2016/05/26/UC%E6%B5%8F%E8%A7%88%E5%99%A8%E9%A6%96%E9%A1%B5%E6%BB%91%E5%8A%A8%E5%8A%A8%E7%94%BB%E5%AE%9E%E7%8E%B0/)
+- [Android NestedScrolling 实战](http://www.race604.com/android-nested-scrolling/)
+- [拦截一切的CoordinatorLayout Behavior](http://jcodecraeer.com/a/anzhuokaifa/androidkaifa/2016/0224/3991.html)
+- [SwipeDismissBehavior用法及实现原理](http://jcodecraeer.com/a/anzhuokaifa/androidkaifa/2015/1103/3650.html)

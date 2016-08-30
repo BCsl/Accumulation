@@ -2,7 +2,7 @@
 
 ## 面对的问题
 
-- 1.不重启Activity的情况下换肤
+- 1.不重启Activity的情况下换肤（尤其是ListView和RecycleView的item）
 - 2.更低的入侵性（不要自定义View...）
 
 ## 两种方式
@@ -13,12 +13,11 @@
 
 - 有限的皮肤切换
 - 耦合程度高 （？）
-- 定义多套的Theme
 - 不能定义和替换Selector！
 
 #### 实现方式
 
-一般通过系统提供的setTheme方法
+一般通过系统提供的`setTheme`方法
 
 #### 案例
 

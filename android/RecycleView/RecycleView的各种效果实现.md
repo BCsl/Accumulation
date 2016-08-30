@@ -52,10 +52,47 @@ private RecyclerView.AdapterDataObserver mDataObserver = new RecyclerView.Adapte
 };
 ```
 
-## StickHeader的实现
+## StickHeader、分组的实现
+
+### 普通的分组
+
+普通分组不需要实现StickHeader效果，同样可以使用 **装饰者模式**，扩展原`Adapter`的功能
+
+分组数据整理
+
+```java
+
+private List<Section> findSections() {
+
+    List<Section> listSection = new ArrayList<>();
+
+    int n = mListValues.size();
+    LinkedHashMap<String, Integer> sections = new LinkedHashMap<>();
+
+    for(int i=0; i<n; i++) {
+        String sectionName = mSectionizer.getSectionTitle(mListValues.get(i));  //Sectionizer从外部注入，实现解偶
+
+        if(!sections.containsKey(sectionName)) {
+            sections.put(sectionName, i );
+            listSection.add(new Section(i ,sectionName)); //记录出现位置和标题，后续还需要根据位置进行排序
+
+        }
+    }
+
+    return listSection ;
+}
+```
+
+需要注意的是Section的排序和Section的位置还需要根据其前面出现的Section数目进行调整（如一个Section1的初步插入位置为10,但在这个Scetion1之前还有一个Section0，初步插入位置为0，那么Section1调整后的位置应该为11，Section0也还是0），另外普通的Item的位置也要进行必要的处理（如Item属于第二个Section，最终位置为10，真实位置为10-2 = 8）
+
+### StickHeader
+
+通过`ItemDecoration`来实现
 
 ## 下拉刷新和自动加载
 
 ## EmptyView
+
+## 间隔线
 
 ## 通用的Adapter

@@ -1,5 +1,21 @@
 # RecyclView各种效果的实现思路
 
+## ItemDecoration
+
+`ItemDecoration`可以用来实现间隔线、StickHeader等效果 需要关注该类的三个方法
+
+- onDraw(Canvas c, RecyclerView parent, State state) //先于ItemView绘制
+- onDrawOver(Canvas c, RecyclerView parent, State state) //再ItemView绘制后绘制，所以可以绘制StickHeader在ItemView之上
+- getItemOffsets(Rect outRect, View view, RecyclerView parent, State state) //Decoration尺寸，会被计入了RecyclerView 每个ItemView的padding中（widthUsed = outRect.left + outRect.right，hegihtUsed = outRect.top + outRect.bottom）
+
+[官方例子](https://android.googlesource.com/platform/development/+/master/samples/Support7Demos/src/com/example/android/supportv7/widget/decorator/DividerItemDecoration.java#101)是最简单的使用教程
+
+[深入理解ItemDecoration](http://blog.piasy.com/2016/03/26/Insight-Android-RecyclerView-ItemDecoration/)
+
+## ItemAnimator
+
+[深入理解ItemAnimator](http://blog.piasy.com/2016/04/04/Insight-Android-RecyclerView-ItemAnimator/)
+
 ## 滑动删除和拖拽排序
 
 `ItemTouchHelper`
@@ -92,7 +108,5 @@ private List<Section> findSections() {
 ## 下拉刷新和自动加载
 
 ## EmptyView
-
-## 间隔线
 
 ## 通用的Adapter

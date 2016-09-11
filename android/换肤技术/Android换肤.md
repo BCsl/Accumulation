@@ -13,7 +13,7 @@
 
 - 有限的皮肤切换
 - 耦合程度高 （？）
-- 不能定义和替换Selector！
+- 5.0以下不能定义和替换Selector！([相关解析](http://blog.chengyunfeng.com/?p=1013))
 
 #### 实现方式
 

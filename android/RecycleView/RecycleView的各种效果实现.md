@@ -1,16 +1,98 @@
 # RecyclView各种效果的实现思路
 
+[Android RecyclerView 使用完全解析](http://blog.csdn.net/lmj623565791/article/details/45059587)
+
 ## ItemDecoration
 
-`ItemDecoration`可以用来实现间隔线、StickHeader等效果 需要关注该类的三个方法
+`ItemDecoration`可以用来实现间隔线、StickHeader等效果,需要关注该类的**三个方法**
 
 - onDraw(Canvas c, RecyclerView parent, State state) //先于ItemView绘制
 - onDrawOver(Canvas c, RecyclerView parent, State state) //再ItemView绘制后绘制，所以可以绘制StickHeader在ItemView之上
-- getItemOffsets(Rect outRect, View view, RecyclerView parent, State state) //Decoration尺寸，会被计入了RecyclerView 每个ItemView的padding中（widthUsed = outRect.left + outRect.right，hegihtUsed = outRect.top + outRect.bottom）
+- getItemOffsets(Rect outRect, View view, RecyclerView parent, State state) //Decoration尺寸，会被计入了RecyclerView 每个ItemView的padding中（widthUsed = outRect.left + outRect.right, outRect的4个值代表这ItemView的padding值）
 
 [官方例子](https://android.googlesource.com/platform/development/+/master/samples/Support7Demos/src/com/example/android/supportv7/widget/decorator/DividerItemDecoration.java#101)是最简单的使用教程
 
 [深入理解ItemDecoration](http://blog.piasy.com/2016/03/26/Insight-Android-RecyclerView-ItemDecoration/)
+
+### 实现StickHeader
+
+#### getItemOffests为分组的ItemView设置padding
+
+首先需要注意的没一个分组下的第一个ItemView需要为它设置好padding，以不至于被Header覆盖，可以在`getItemOffsets`中处理
+
+```java
+@Override
+public void getItemOffsets(Rect outRect, View view, RecyclerView parent, RecyclerView.State state) {
+    int position = parent.getChildAdapterPosition(view);
+
+    int headerHeight = 0;
+    if (position != RecyclerView.NO_POSITION && hasHeader(position)) { //hasHeader用来判断当前位置和上一个位置之间的HeaderId是否一致，则可以知道是否需要Header
+        View header = getHeader(parent, position).itemView; //getHeader用来获取Header View，由于我们没有真正添加到RecycleView中，我们需要为它做测量操作
+        headerHeight = getHeaderHeightForLayout(header);
+    }
+
+    outRect.set(0, headerHeight, 0, 0);
+}
+```
+
+Header的measure和layout模拟
+
+```java
+private RecyclerView.ViewHolder getHeader(RecyclerView parent, int position) {
+    final long key = mAdapter.getHeaderId(position);
+    if (mHeaderCache.containsKey(key)) {
+        return mHeaderCache.get(key);
+    } else {
+        final RecyclerView.ViewHolder holder = mAdapter.onCreateHeaderViewHolder(parent);
+        final View header = holder.itemView;
+        mAdapter.onBindHeaderViewHolder(holder, position);
+        int widthSpec = View.MeasureSpec.makeMeasureSpec(parent.getWidth(), View.MeasureSpec.EXACTLY);
+        int heightSpec = View.MeasureSpec.makeMeasureSpec(parent.getHeight(), View.MeasureSpec.UNSPECIFIED);
+
+        int childWidth = ViewGroup.getChildMeasureSpec(widthSpec,
+                parent.getPaddingLeft() + parent.getPaddingRight(), header.getLayoutParams().width);
+        int childHeight = ViewGroup.getChildMeasureSpec(heightSpec,
+                parent.getPaddingTop() + parent.getPaddingBottom(), header.getLayoutParams().height);
+        header.measure(childWidth, childHeight);
+        header.layout(0, 0, header.getMeasuredWidth(), header.getMeasuredHeight());
+        mHeaderCache.put(key, holder);
+        return holder;
+    }
+}
+```
+
+#### onDrawOver为Header进行绘制
+
+前面为每一个分组的地一个ItemView设置好了padding，这一步则是在padding上进行绘制操作，通过`View#draw`方法来处理，而不是直接添加一个View到RecycleView
+
+```java
+
+public void onDrawOver(Canvas c, RecyclerView parent, RecyclerView.State state) {
+    final int count = parent.getChildCount();
+
+    for (int layoutPos = 0; layoutPos < count; layoutPos++) {
+        final View child = parent.getChildAt(layoutPos);
+
+        final int adapterPos = parent.getChildAdapterPosition(child);
+
+        if (adapterPos != RecyclerView.NO_POSITION && hasHeader(adapterPos)) {
+            View header = getHeader(parent, adapterPos).itemView;
+            c.save();
+            final int left = child.getLeft();
+            final int top = getHeaderTop(parent, child, header, adapterPos, layoutPos);
+            c.translate(left, top);
+            header.setTranslationX(left);
+            header.setTranslationY(top);
+            header.draw(c);
+            c.restore();
+        }
+    }
+}
+```
+
+#### 处理Header的点击
+
+因为Header并不是真正View，所以处理点击事件只能通过触摸点来判断是否属于某个Header
 
 ## ItemAnimator
 

@@ -79,7 +79,7 @@ public void onDrawOver(Canvas c, RecyclerView parent, RecyclerView.State state) 
             View header = getHeader(parent, adapterPos).itemView;
             c.save();
             final int left = child.getLeft();
-            final int top = getHeaderTop(parent, child, header, adapterPos, layoutPos);
+            final int top = getHeaderTop(parent, child, header, adapterPos, layoutPos); //需要为第一个View的Header进行偏移量的调整
             c.translate(left, top);
             header.setTranslationX(left);
             header.setTranslationY(top);
@@ -92,7 +92,7 @@ public void onDrawOver(Canvas c, RecyclerView parent, RecyclerView.State state) 
 
 #### 处理Header的点击
 
-因为Header并不是真正View，所以处理点击事件只能通过触摸点来判断是否属于某个Header
+因为Header并不是真正View，所以处理点击事件只能通过触摸点来判断是否属于某个Header（RecycleView#OnItemTouchListener），这种方式不太完美
 
 ## ItemAnimator
 
@@ -192,3 +192,11 @@ private List<Section> findSections() {
 ## EmptyView
 
 ## 通用的Adapter
+
+## 灵活方便处理多Type
+
+[MultiType](https://github.com/drakeet/MultiType)
+
+### 实现思路
+
+全局的多Type类型池，应用初始化的时候以`Class`类型为`Index`为所有的类型进行一次注册，同时提供一个对应的`Provider`，用于绑定和设置对应类型的ViewHolder，之后`RecycleView#Adapter`根据具体的类型数据类型找到对应的`Provider`进行初始化和数据的绑定，就是这么简单，唯一的争议在于全局类型池的使用上，但作者也是给出了自己的解析，对于性能的损耗也是有限的，但对于代码的解偶的帮助却是巨大的，有机会还是可以试试

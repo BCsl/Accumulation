@@ -1,7 +1,9 @@
 # Activity的启动过程3-显示
 
 ## Step25(Setp14)
+
 找到当前取得焦点的`ActivityStack`,启动目标`ActivityRecord`
+
 ```java
 ActivityStackSupervisor.java
 
@@ -28,6 +30,7 @@ boolean resumeTopActivitiesLocked(ActivityStack targetStack, ActivityRecord targ
 ## Setp26
 
 暂停完所有`ActivityStack`的`mResumedActivity`后，就需要显示当前前台栈栈顶的Activity，因为还不可见，所以添加到ActivityStackSupervisor的`mWaitingVisibleActivities`中等待显示，通过`WindowManagerService#setAppVisibility`来进行界面的显示？并设置`WWindowManagerService`转换动画，由于所属进程并未创建，最后调用`ActivityStackSupervisor.startSpecificActivityLocked`
+
 ```java
 ActivityStack.java
 //prev=上一个暂停的`Activity`(`mHomeStack`的Laucher),options=null
@@ -216,7 +219,6 @@ final boolean resumeTopActivityLocked(ActivityRecord prev, Bundle options) {
 
 ## Step27
 
-
 ```java
 //r:setp12创建的需要显示的Activity，andResume:true,checkConfig:true
 void startSpecificActivityLocked(ActivityRecord r,boolean andResume, boolean checkConfig) {
@@ -238,11 +240,11 @@ void startSpecificActivityLocked(ActivityRecord r,boolean andResume, boolean che
     //如果目标Activity所在的app进程还未开启，如果是从Launcher启动一个新的APP
     mService.startProcessLocked(r.processName, r.info.applicationInfo, true, 0,"activity", r.intent.getComponent(), false, false, true);
 }
-
 ```
 
 ## Step28
-应用进程的创建和启动__(详细的需要之后写一篇单独的笔记记录)__ 这里不再深究，最后通过`Process.start`启动一个新的应用进程，指定该进程的入口程序函数为`ActivityThread`类的`main()`方法，那么接下来就从它开始分析新的应用程序的启动过程
+
+应用进程的创建和启动**(详细的需要之后写一篇单独的笔记记录)** 这里不再深究，最后通过`Process.start`启动一个新的应用进程，指定该进程的入口程序函数为`ActivityThread`类的`main()`方法，那么接下来就从它开始分析新的应用程序的启动过程
 
 ```java
 ActivityManagerService.java
@@ -322,7 +324,6 @@ final ProcessRecord startProcessLocked(String processName,ApplicationInfo info, 
         startProcessLocked(app, hostingType, hostingNameStr);
         return (app.pid != 0) ? app : null;
     }
-
 ```
 
 创建`Processrecord`实体
@@ -342,9 +343,8 @@ final ProcessRecord newProcessRecordLocked(ApplicationInfo info, String customPr
     }
     return new ProcessRecord(ps, info, proc, uid);
 }
-
-
 ```
+
 启动新的进程，设置超时消息（和前面的暂停超时类似）
 
 ```java
@@ -446,9 +446,10 @@ private final void startProcessLocked(ProcessRecord app,String hostingType, Stri
             Slog.e(TAG, "Failure starting process " + app.processName, e);
         }
     }
-
 ```
+
 ## Step29
+
 新的应用进程都做了哪些操作1.在主线程创建`Looper`循环消息处理模型；2.新建`ActivityThread`，并新建`ApplicationThread`这个Binder本地对象，并调用其`attach`方法；3.调用了`AsyncTask#init()`方法,强制其静态成员`sHandler`的构造
 
 ```java
@@ -489,9 +490,10 @@ public static void main(String[] args) {
 
         throw new RuntimeException("Main thread loop unexpectedly exited");
     }
-
 ```
+
 主要来看`ActivityThrad#attach`方法，把`ApplicationThread`这个本地对象发送到`ActivityManagerService`，`ActivityManagerService`在调度`Activity`的时候，就可以使用到该`ApplicationThread`
+
 ```java
 ActivityThread.java
 //System：false
@@ -549,10 +551,10 @@ private void attach(boolean system) {
         }
     });
 }
-
 ```
 
 ## setp30
+
 发送`ApplicationThread`这个Binder本地对象到`ActivityManagerService`(`ApplicationThread`是用来调度`Activity`的各种生命周期的，从Setp19处理`Activity`的暂停操作便可知道)
 
 ```java
@@ -580,7 +582,7 @@ ActivityManagerService.java
 
 case ATTACH_APPLICATION_TRANSACTION: {
          data.enforceInterface(IActivityManager.descriptor);
-         IApplicationThread app = ApplicationThreadNative.asInterface(data.readStrongBinder());
+         IApplicationThread app = ApplicationThreadNative.asInterface(data.readStrongBinder()); //转换成Binder代理对象ApplicationThreadProxy
          if (app != null) {
              attachApplication(app);
          }
@@ -599,7 +601,8 @@ case ATTACH_APPLICATION_TRANSACTION: {
       }
   }
 ```
-对当前的`Processrecord`初始化，另外在Step28发送的进程启动超时消息也会在这一步移除，另外最重要的一步是`  ApplicationThread#bindApplication`调用
+
+对当前的`Processrecord`初始化，另外在Step28发送的进程启动超时消息也会在这一步移除，另外最重要的一步是`ApplicationThread#bindApplication`调用
 
 ```java
 ActivityManagerService.java
@@ -755,11 +758,12 @@ private final boolean attachApplicationLocked(IApplicationThread thread,int pid)
 
     return true;
 }
-
 ```
 
 ## step32
+
 BIND_APPLICATION
+
 ```java
 ApplicationThread.java
 
@@ -800,6 +804,7 @@ public final void bindApplication(String processName,
     queueOrSendMessage(H.BIND_APPLICATION, data);
 }
 ```
+
 ActivityThrad的成员H处理
 
 ```java
@@ -1007,6 +1012,7 @@ private void handleBindApplication(AppBindData data) {
 ```
 
 ## Step33
+
 在`Step32`创建和初始化了`Instrumentation`，用来辅助管理`Activity`生命周期，和创建了应用的`Application`对象，并回调了其`onCreate`方法，会到`step31`,`bindApplication`之后，接着`mStackSupervisor.attachApplicationLocked`方法的执行，找到要启动的`AActivityRecord`信息
 
 ```java
@@ -1041,6 +1047,7 @@ boolean attachApplicationLocked(ProcessRecord app, boolean headless) throws Exce
 ```
 
 ## Step34
+
 保存正要启动的`ActivityRecord`记录的进程信息，重要的是`app.thread.scheduleLaunchActivity`的调用
 
 ```java
@@ -1169,8 +1176,8 @@ final boolean realStartActivityLocked(ActivityRecord r,ProcessRecord app, boolea
 
     return true;
 }
-
 ```
+
 ## Step35
 
 ```java
@@ -1209,9 +1216,10 @@ public final void scheduleLaunchActivity(Intent intent, IBinder token, int ident
 
     queueOrSendMessage(H.LAUNCH_ACTIVITY, r);
 }
-
 ```
+
 ## Step36
+
 处理`LAUNCH_ACTIVITY`消息
 
 ```java
@@ -1300,7 +1308,6 @@ private void handleLaunchActivity(ActivityClientRecord r, Intent customIntent) {
         }
     }
 }
-
 ```
 
 ## Step37
@@ -1412,9 +1419,10 @@ private Activity performLaunchActivity(ActivityClientRecord r, Intent customInte
 
     return activity;
 }
-
 ```
+
 `Activity`的`attach`初始化，包括`Window`的创建
+
 ```java
 final void attach(Context context, ActivityThread aThread,
         Instrumentation instr, IBinder token, int ident,
@@ -1461,6 +1469,7 @@ final void attach(Context context, ActivityThread aThread,
     mCurrentConfig = config;
 }
 ```
+
 `Activity`的`onCreate`回调
 
 ```java
@@ -1524,7 +1533,6 @@ protected void onCreate(Bundle savedInstanceState) {
    getApplication().dispatchActivityCreated(this, savedInstanceState);
    mCalled = true;
 }
-
 ```
 
 `Activity`的`onStart`回调
@@ -1570,6 +1578,7 @@ final void performStart() {
         getApplication().dispatchActivityStarted(this);
     }
 ```
+
 `onRestoreInstanceState`方法回调
 
 ```java
@@ -1590,7 +1599,6 @@ public void callActivityOnRestoreInstanceState(Activity activity, Bundle savedIn
         }
     }
 }
-
 ```
 
 ## Step38
@@ -1713,9 +1721,10 @@ final void handleResumeActivity(IBinder token, boolean clearHide, boolean isForw
         }
     }
 }
-
 ```
+
 `onRestare`和`onResume`回调
+
 ```java
 //clearHide:false
 public final ActivityClientRecord performResumeActivity(IBinder token,boolean clearHide) {
@@ -1785,5 +1794,4 @@ final void performResume() {
             " did not call through to super.onPostResume()");
     }
 }
-
 ```

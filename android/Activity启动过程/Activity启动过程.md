@@ -1,6 +1,7 @@
 # Activity的启动过程
 
 ## Step1
+
 ```java
 Launcher3.java
 
@@ -13,7 +14,9 @@ boolean startActivitySafely(View v, Intent intent, Object tag) {
       return success;
   }
 ```
+
 ## Step2
+
 ```java
 Launcher3.java
 
@@ -36,9 +39,10 @@ boolean startActivity(View v, Intent intent, Object tag) {
         //...activity not found
         return false;
     }
-
 ```
+
 ## Step3
+
 ```java
 Activity.java
 
@@ -51,8 +55,11 @@ public void startActivity(Intent intent, Bundle options) {
        }
    }
 ```
+
 ## Step4
+
 `Instrumentation`对象，用来辅助管理`Activity`生命周期，应用启动的时候新建，保存在`Activity`变量`mInstrumentation`
+
 ```java
 Activity.java
 //requestCode=-1 ,option=null
@@ -86,13 +93,15 @@ public void startActivityForResult(Intent intent, int requestCode, Bundle option
         //...
     }
 }
-
 ```
+
 ## Step5
+
 使用`ActivityManagerProxy`的代理对象通知`AMS`去启动一个`Activity`
+
 ```java
 Instrumentation.java
-//contextThread:mMainThread.getApplicationThread(),是一个binder对象
+//contextThread:mMainThread.getApplicationThread(),是一个binder本地对象
 //token:Activity的成员变量mToken（IApplicationToken.Stub类型）
 //requestCode=-1 ,option=null,
 
@@ -113,9 +122,10 @@ public ActivityResult execStartActivity(Context who, IBinder contextThread, IBin
     }
     return null;
 }
-
 ```
+
 ## Step6
+
 ```java
 ActivityManagerProxy.java
 //caller:mMainThread.getApplicationThread()，是一个binder本地对象
@@ -158,10 +168,12 @@ public int startActivity(IApplicationThread caller, String callingPackage, Inten
        data.recycle();
        return result;
    }
-
 ```
+
 ## Step7
+
 `Ams`处理`START_ACTIVITY_TRANSACTION`请求
+
 ```java
 
 ActivityManagerNative.java
@@ -191,6 +203,7 @@ case START_ACTIVITY_TRANSACTION:
             return true;
         }
 ```
+
 ## step8
 
 ```java
@@ -210,13 +223,14 @@ ActivityManagerService.java
              resultWho, requestCode,
              startFlags, profileFile, profileFd, options, UserHandle.getCallingUserId());
  }
-
 ```
-__question1:userid是如何确认的?__
 
-##  Step9
-`ActivityManagerService`调用`ActivityStackSupervisor`处理，ActivityStackSupervisor用来辅助管理ActivityStack，ActivityStack里面有多个TaskRecord，即通常说的Activity栈，TaskRecord有多个ActivityRecord，是Activity在内核空间的表示；
-ActivityStackSupervisor内部有两种ActivityStack，mHomeStack和mFocusedStack,mHomeStack保存launcher app的Activity，mFocusedStack保存当前接受输入事件和正启动的下一个Activity
+**question1:userid是如何确认的?**
+
+## Step9
+
+`ActivityManagerService`调用`ActivityStackSupervisor`处理，ActivityStackSupervisor用来辅助管理ActivityStack，ActivityStack里面有多个TaskRecord，即通常说的Activity栈，TaskRecord有多个ActivityRecord，是Activity在内核空间的表示； ActivityStackSupervisor内部有两种ActivityStack，mHomeStack和mFocusedStack,mHomeStack保存launcher app的Activity，mFocusedStack保存当前接受输入事件和正启动的下一个Activity
+
 ```java
 ActivityManagerService.java
 
@@ -238,11 +252,10 @@ ActivityManagerService.java
                 null, null, options, userId);
     }
 ```
+
 ## Step10
 
-`AMS`中对`Activity`的管理是通过任务栈的形式来管理的，也就是利用`TaskRecord`代表Task，系统中有很多Task，所以就出现了Task栈——`ActivityStack`，按理说只要一个`ActivityStack`就OK了，但是Android4.0+有两个`ActivityStack`，并且还可以有多个。
-`ActivityStackSupervisor`是一个管理`ActivityStack`类，里面的函数应该可以给出上面的答案。相关函数主要有`adjustStackFocus()`、`getFocusedStack()`、`setFocusedStack()`等。[ReadMore](http://blog.csdn.net/guoqifa29/article/details/39341931)
-
+`AMS`中对`Activity`的管理是通过任务栈的形式来管理的，也就是利用`TaskRecord`代表Task，系统中有很多Task，所以就出现了Task栈----`ActivityStack`，按理说只要一个`ActivityStack`就OK了，但是Android4.0+有两个`ActivityStack`，并且还可以有多个。 `ActivityStackSupervisor`是一个管理`ActivityStack`类，里面的函数应该可以给出上面的答案。相关函数主要有`adjustStackFocus()`、`getFocusedStack()`、`setFocusedStack()`等。[ReadMore](http://blog.csdn.net/guoqifa29/article/details/39341931)
 
 ```java
 ActivityStackSupervisor.java
@@ -283,7 +296,7 @@ final int startActivityMayWait(IApplicationThread caller, int callingUid,
             }
             //初始化用户ID和进程ID
             final ActivityStack stack = getFocusedStack();//这里会是mHomeStack
-			      //config为null，从launcher启动
+                  //config为null，从launcher启动
             stack.mConfigWillChange = config != null&& mService.mConfiguration.diff(config) != 0;
 
             final long origId = Binder.clearCallingIdentity();
@@ -346,12 +359,14 @@ final int startActivityMayWait(IApplicationThread caller, int callingUid,
             return res;
         }
     }
-
 ```
-__READMORE:ActivityInfo的解析__
+
+**READMORE:ActivityInfo的解析**
 
 ## Step11
+
 用户启动组件权限的检测，并会新建相应的`ActivityRecord`,
+
 ```java
 ActivityStackSupervisor.java
 //requestCode=-1,option=null
@@ -397,13 +412,13 @@ final int startActivityLocked(IApplicationThread caller,Intent intent, String re
                 }
             }
         }
-		//Will send result to，上面可以知 resultRecord应该是空
+        //Will send result to，上面可以知 resultRecord应该是空
         ActivityStack resultStack = resultRecord == null ? null : resultRecord.task.stack;//null
 
         int launchFlags = intent.getFlags();
-		//FLAG_ACTIVITY_FORWARD_RESULT的作用:
-		//O ----startActivityForResult()----> A ----FLAG_ACTIVITY_FORWARD_RESULT----> B
-		//B的setResult会在O接到结果
+        //FLAG_ACTIVITY_FORWARD_RESULT的作用:
+        //O ----startActivityForResult()----> A ----FLAG_ACTIVITY_FORWARD_RESULT----> B
+        //B的setResult会在O接到结果
         if ((launchFlags&Intent.FLAG_ACTIVITY_FORWARD_RESULT) != 0
                 && sourceRecord != null) {
             // Transfer the result target from the source activity to the new
@@ -474,7 +489,7 @@ final int startActivityLocked(IApplicationThread caller,Intent intent, String re
         if (outActivity != null) {
             outActivity[0] = r;
         }
-		//获取到取得焦点的ActivityStack(这里会是mHomeStack)
+        //获取到取得焦点的ActivityStack(这里会是mHomeStack)
         final ActivityStack stack = getFocusedStack();
         if (stack.mResumedActivity == null
                 || stack.mResumedActivity.info.applicationInfo.uid != callingUid) {//false
@@ -498,7 +513,7 @@ final int startActivityLocked(IApplicationThread caller,Intent intent, String re
         } else {
             mService.mDidAppSwitch = true;
         }
-		//里面也会调用startActivityUncheckedLocked,和变量mPendingActivityLaunches相关，先忽略
+        //里面也会调用startActivityUncheckedLocked,和变量mPendingActivityLaunches相关，先忽略
         mService.doPendingActivityLaunchesLocked(false);
 
         err = startActivityUncheckedLocked(r, sourceRecord, startFlags, true, options);
@@ -512,8 +527,8 @@ final int startActivityLocked(IApplicationThread caller,Intent intent, String re
         }
         return err;
     }
-
 ```
+
 `ActivityRecord`的构造
 
 ```java
@@ -661,20 +676,19 @@ ActivityRecord(ActivityManagerService _service, ProcessRecord _caller,
           immersive = false;
       }
   }
-
 ```
-__ReadMore：FLAG_ACTIVITY_FORWARD_RESULT的处理__
 
-__question2:mPendingActivityLaunches的作用？__
+**ReadMore：FLAG_ACTIVITY_FORWARD_RESULT的处理**
+
+**question2:mPendingActivityLaunches的作用？**
 
 ## Step12
 
-新建或重用`ActivityStack`,`TaskRecord`，__各种launcerMode和IntentFlag的处理__，最后调用目标`ActivityStack`的`startActivityLocked`方法
-下面是三种情况下，其启动的Intent.FLAG会带上Intent.FLAG_ACTIVITY_NEW_TASK，代表需要在新的任务栈启动目标`Activity`：
-* （1）`sourceRecord=null`说明要启动的`Activity`并不是由一个`Activity`的`Context`启动的，这时候我们总是启动一个新的`TASK`
-* （2）`Launcher`是`SingleInstance`模式（或者说启动新的`Activity`的源`Activity`的`launchMode`为`SingleInstance`）
-* （3）需要启动的`Activity`的`launchMode == ActivityInfo.LAUNCH_SINGLE_INSTANCE|| r.launchMode ==ActivityInfo.LAUNCH_SINGLE_TASK`
-其中可以发现:__`SingleTask`模式，但是它并不像官方文档描述的一样：`The system creates a new task and instantiates the activity at the root of the new task`，而是在跟它有相同`taskAffinity`的任务中启动，并且位于这个任务的堆栈顶端，所以如果指定特定的`taskAffinity`，就可以在新的`TaskRecord`启动__
+新建或重用`ActivityStack`,`TaskRecord`，**各种launcerMode和IntentFlag的处理**，最后调用目标`ActivityStack`的`startActivityLocked`方法 下面是三种情况下，其启动的Intent.FLAG会带上Intent.FLAG_ACTIVITY_NEW_TASK，代表需要在新的任务栈启动目标`Activity`：
+
+- （1）`sourceRecord=null`说明要启动的`Activity`并不是由一个`Activity`的`Context`启动的，这时候我们总是启动一个新的`TASK`
+- （2）`Launcher`是`SingleInstance`模式（或者说启动新的`Activity`的源`Activity`的`launchMode`为`SingleInstance`）
+- （3）需要启动的`Activity`的`launchMode == ActivityInfo.LAUNCH_SINGLE_INSTANCE|| r.launchMode ==ActivityInfo.LAUNCH_SINGLE_TASK` 其中可以发现:**`SingleTask`模式，但是它并不像官方文档描述的一样：`The system creates a new task and instantiates the activity at the root of the new task`，而是在跟它有相同`taskAffinity`的任务中启动，并且位于这个任务的堆栈顶端，所以如果指定特定的`taskAffinity`，就可以在新的`TaskRecord`启动**
 
 ```java
 ActivityStackSupervisor.java
@@ -823,7 +837,7 @@ final int startActivityUncheckedLocked(ActivityRecord r,ActivityRecord sourceRec
                     // being started, which means not bringing it to the front
                     // if the caller is not itself in the front.
                     final ActivityStack lastStack = getLastStack();//mFocusedStack
-                    	//遍历lastStack中所有TaskRecord中的ActivityStack，找到第一个不是停止的、delayedResume、okToShow且不等于notTop的
+                        //遍历lastStack中所有TaskRecord中的ActivityStack，找到第一个不是停止的、delayedResume、okToShow且不等于notTop的
                       //notTop为NULL，因为FLAG_ACTIVITY_PREVIOUS_IS_TOP标识不为1
                     ActivityRecord curTop = lastStack == null?null : lastStack.topRunningNonDelayedActivityLocked(notTop);
                     //通常curTop等于intentActivity，
@@ -1080,10 +1094,10 @@ final int startActivityUncheckedLocked(ActivityRecord r,ActivityRecord sourceRec
        mService.setFocusedActivityLocked(r);//记录mFocusedActivity为r，mFocusedStack
        return ActivityManager.START_SUCCESS;
    }
-
 ```
 
-__ReadMore:创建新的ActivityStack的过程，包括了WindowManagerService的处理__
+**ReadMore:创建新的ActivityStack的过程，包括了WindowManagerService的处理**
+
 ```java
 ActivityStackSupervisor.java
 //可以看出对于ApplicationActivity类型的ActivityRecord总添加在mFocusedStack的Task中
@@ -1157,11 +1171,12 @@ int createStack() {
      mStacks.add(new ActivityStack(mService, mContext, mLooper, mLastStackId));//ActivityStack的新建
      return mLastStackId;
  }
-
 ```
-__READMORE:创建新的TaskRecord__
+
+**READMORE:创建新的TaskRecord**
 
 创建新的`TaskRecord`对象并插入到`mTaskHistory`栈顶
+
 ```java
 ActivityStack.java
 //toTop=true;
@@ -1201,10 +1216,10 @@ TaskRecord createTaskRecord(int taskId, ActivityInfo info, Intent intent, boolea
         }
         mTaskHistory.add(stackNdx, task);
     }
-
 ```
 
 ## Step13
+
 前一步骤已经创建好了`ActivityRecord`实例、并绑定到与其对应的`TaskRecord`对象（但是`TaskRecord`并未将其记录在没Activity`mActivities`）和初始化好了对应的`ActivityStack`对象`mForceStack`,且该`TaskRecord`已经保存在了`ActivityStack`的`mTaskHistory`栈顶，调用目标`ActivityStack`的`startActivityLocked`方法把`ActivityRecord`记录在`TaskRecord`，之后告诉`ActivityStackSupervisor`可以继续启动一个新的应用程序
 
 ```java
@@ -1318,10 +1333,12 @@ final void startActivityLocked(ActivityRecord r, boolean newTask,boolean doResum
             mStackSupervisor.resumeTopActivitiesLocked();
         }
     }
-
 ```
+
 ## Step14
+
 找到当前取得焦点的`ActivityStack`,启动目标`ActivityRecord`
+
 ```java
 ActivityStackSupervisor.java
 
@@ -1348,7 +1365,6 @@ boolean resumeTopActivitiesLocked(ActivityStack targetStack, ActivityRecord targ
      }
      return result;
  }
-
 ```
 
 ## Step15
@@ -1465,10 +1481,9 @@ final boolean resumeTopActivityLocked(ActivityRecord prev, Bundle options) {
     }
 ```
 
-
-
 ## Reference
-* [ActivityStackSupervisor.StartActivityUncheckedLocked()函数分析](http://www.aiuxian.com/article/p-1880233.html)
-* [Activity管理机制](http://blog.csdn.net/guoqifa29/article/details/39341931)
-* [http://blog.csdn.net/guoqifa29/article/details/40015127](http://blog.csdn.net/guoqifa29/article/details/40015127)
-* [Activity生命周期的回调，你应该知道得更多](http://blog.csdn.net/yalinfendou/article/details/46909173)
+
+- [ActivityStackSupervisor.StartActivityUncheckedLocked()函数分析](http://www.aiuxian.com/article/p-1880233.html)
+- [Activity管理机制](http://blog.csdn.net/guoqifa29/article/details/39341931)
+- <http://blog.csdn.net/guoqifa29/article/details/40015127>
+- [Activity生命周期的回调，你应该知道得更多](http://blog.csdn.net/yalinfendou/article/details/46909173)

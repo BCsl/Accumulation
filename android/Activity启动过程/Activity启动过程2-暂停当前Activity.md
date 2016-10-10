@@ -19,12 +19,12 @@ boolean pauseBackStacks(boolean userLeaving) {
      }
      return someActivityPaused;
  }
-
 ```
 
 ## Step17
 
 记录标记将要暂停的当前Stack的`mResumedActivity`对象,状态标记为`PAUSING`，通过`Binder`发送异步消息到`ApplicationThread`处理暂停事务，发起暂停超时消息
+
 ```java
 ActivityStack.java
 //userLeaving=true,uiSleeping=false;
@@ -97,8 +97,8 @@ final void startPausingLocked(boolean userLeaving, boolean uiSleeping) {
            mStackSupervisor.getFocusedStack().resumeTopActivityLocked(null);//Step14
        }
    }
-
 ```
+
 暂停Activity超时处理
 
 ```java
@@ -118,8 +118,9 @@ case PAUSE_TIMEOUT_MSG: {
 ```
 
 ## Step18
-发起的是异步的通信请求，请求暂停`token`标识的`Activity`（见Step29,记录在Processrecord#thread是binder本地对象，并非代理对象，所以可能并没有经过进程间通信来处理`schedulePauseActivity`方法？）
-__update:2016-01-03但如果这样暂停超时便没有了意义？,但是`ApplicationThread`各种的调度是通过发送消息到`ActivityThread`的`Handler`成语变量`H`来处理！所以也是一个异步操作__ 所以这可以直接看`Step20`了
+
+发起的是异步的通信请求，请求暂停`token`标识的`Activity`（见Step29,记录在Processrecord#thread是binder本地对象，并非代理对象，所以可能并没有经过进程间通信来处理`schedulePauseActivity`方法？） **update:2016-01-03但如果这样暂停超时便没有了意义？,但是`ApplicationThread`各种的调度是通过发送消息到`ActivityThread`的`Handler`成语变量`H`来处理！所以也是一个异步操作** 所以这可以直接看`Step20`了
+
 ```java
 ApplicationThreadProxy.java
 //token:ActivityRecord#appToken（IApplicationToken.Stub类型），finished=false，userLeaving=true，configChanges=false;
@@ -157,11 +158,12 @@ public boolean onTransact(int code, Parcel data, Parcel reply, int flags)
     }
    return super.onTransact(code, data, reply, flags);  
   }
-
 ```
 
 ## Step20
+
 `ActivityThread`内部类 `ApplicationThread`实现了`ApplicationThreadNative`抽象类
+
 ```java
 ApplicationThread.java
 
@@ -180,6 +182,7 @@ public final void schedulePauseActivity(IBinder token, boolean finished,boolean 
        }
    }
 ```
+
 `ActivityThread`内`Handle`类型的成员变量`mH`处理`PAUSE_ACTIVITY`消息
 
 ```java
@@ -220,10 +223,10 @@ private void handlePauseActivity(IBinder token, boolean finished,boolean userLea
         }
     }
 }
-
-
 ```
+
 ## Step22
+
 `performUserLeavingActivity`会回调`Activity`的`performUserLeaving`方法
 
 ```java
@@ -247,9 +250,11 @@ Activity.java
        onUserLeaveHint();
    }
 ```
+
 ## Step23
 
 `performPauseActivity`会回调`Activity`的`onSaveInstanceState`，`onPause`
+
 ```java
 //token:ActivityRecord#appToken（IApplicationToken.Stub类型），saveState=Android3.0之后为false，之前为true
 
@@ -297,9 +302,10 @@ final Bundle performPauseActivity(ActivityClientRecord r, boolean finished,boole
         //...
         return state;
     }
-
 ```
+
 `mCalled`变量用来检测`super.onPause`的执行，因为这里还有一个步骤需要处理，`Application`进行`ActivityLifecycleCallbacks`的回调
+
 ```java
 Activity.java
 
@@ -319,12 +325,11 @@ final void performPause() {
       getApplication().dispatchActivityPaused(this);
       mCalled = true;
   }
-
 ```
+
 ## Step24
-回到`Step21`,处理完`Activity`的`onPause`，还有一个步骤需要做，是否还记得`Step17`所发送的超时处理消息，`ActivityManagerNative.getDefault().activityPaused(token)`,告诉`ActivityManagerService`处理暂停成功，移除超时消息，最后添加到`mStackSupervisor`的`mStoppingActivities`，再次调用方法
-`resumeTopActivitiesLocked`启动位于顶端的`Activity`组件,该方法在前面的`Step15`已经调用了，当时尚有未进入`PAUSED`状态的`Launcher`组件，所以
-`ActivityStackSupervisor`调用的`pauseBackStacks`方法返回true，所以跳过了Resume步骤，先进行了Pausing步骤。
+
+回到`Step21`,处理完`Activity`的`onPause`，还有一个步骤需要做，是否还记得`Step17`所发送的超时处理消息，`ActivityManagerNative.getDefault().activityPaused(token)`,告诉`ActivityManagerService`处理暂停成功，移除超时消息，最后添加到`mStackSupervisor`的`mStoppingActivities`，再次调用方法 `resumeTopActivitiesLocked`启动位于顶端的`Activity`组件,该方法在前面的`Step15`已经调用了，当时尚有未进入`PAUSED`状态的`Launcher`组件，所以 `ActivityStackSupervisor`调用的`pauseBackStacks`方法返回true，所以跳过了Resume步骤，先进行了Pausing步骤。
 
 ```java
 ActivityManagerProxy.java
@@ -340,11 +345,12 @@ public void activityPaused(IBinder token) throws RemoteException
     data.recycle();
     reply.recycle();
 }
-
 ```
 
 ## Step25
+
 `ActivityManagerService`处理`Activity`暂停成功，移除`Step17`发出的超时消息，`ActivityRecord`状态记录为`PAUSED`
+
 ```java
 ActivityManagerNative.java
 
@@ -389,6 +395,7 @@ final void activityPausedLocked(IBinder token, boolean timeout) {
     }
 }
 ```
+
 完成当前`ActivityStack`中显示的`mResumedActivity`（实际上现在已经记录在`mPausingActivity`），接着就可以显示需要`Resume`的Activity
 
 ```java

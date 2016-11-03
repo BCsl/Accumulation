@@ -102,7 +102,7 @@ public final class ButterKnifeProcessor extends AbstractProcessor {
 
 #### 生成代理类
 
-通过`ProcessingEnvironment#getFiler()`得到的对象来写文件，通常来说代理类的全路径名是`PackageName + className+ 自定以的后缀`，根据全路径名，然后获取Writer对象
+通过`ProcessingEnvironment#getFiler()`得到的对象来写文件，通常来说代理类的全路径名是`PackageName + className+ 自定义的后缀`，根据全路径名，然后获取Writer对象
 
 ```java
 JavaFileObject sourceFile = mFileUtils.createSourceFile(proxyInfo.getProxyClassFullName(), proxyInfo.getTypeElement());

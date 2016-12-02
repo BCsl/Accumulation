@@ -66,7 +66,6 @@ private RecyclerView.ViewHolder getHeader(RecyclerView parent, int position) {
 前面为每一个分组的地一个ItemView设置好了padding，这一步则是在padding上进行绘制操作，通过`View#draw`方法来处理，而不是直接添加一个View到RecycleView
 
 ```java
-
 public void onDrawOver(Canvas c, RecyclerView parent, RecyclerView.State state) {
     final int count = parent.getChildCount();
 
@@ -111,7 +110,6 @@ public void onDrawOver(Canvas c, RecyclerView parent, RecyclerView.State state) 
 `GridLayoutManager`可以通过重写`SpanSizeLookup`对象来实现某个position的子View占用的网格数量，调用时机`onViewAttachedToWindow`:
 
 ```java
-
 if (manager instanceof GridLayoutManager) {
     final GridLayoutManager gridManager = ((GridLayoutManager) manager);
     gridManager.setSpanSizeLookup(new GridLayoutManager.SpanSizeLookup() {
@@ -138,7 +136,6 @@ if (lp != null && lp instanceof StaggeredGridLayoutManager.LayoutParams) {
 还需要需要注意的是`RecyclerView.AdapterDataObserver`的回调，因为添加了Header，被装饰的Adapter是并不感知且不需要理会，所有逻辑还是自身的那一套，所以`onItemRangeChanged`的一些回调也需要在Index上做相应的改变
 
 ```java
-
 private RecyclerView.AdapterDataObserver mDataObserver = new RecyclerView.AdapterDataObserver() {
     //....
 
@@ -159,7 +156,6 @@ private RecyclerView.AdapterDataObserver mDataObserver = new RecyclerView.Adapte
 分组数据整理
 
 ```java
-
 private List<Section> findSections() {
 
     List<Section> listSection = new ArrayList<>();

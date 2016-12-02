@@ -28,7 +28,7 @@ case ADD_SERVICE_TRANSACTION: {
 ## 2.具体的方法来处理事件：
 
 ```java
-   virtual status_t addService(const String16& name, const sp<IBinder>& service,
+virtual status_t addService(const String16& name, const sp<IBinder>& service,
             bool allowIsolated)
     {
         Parcel data, reply;

@@ -90,7 +90,7 @@ public final class ButterKnifeProcessor extends AbstractProcessor {
 #### 获取某个注解的Element
 
 ```java
-  Set<? extends Element> elements = roundEnvironment.getElementsAnnotatedWith(BindView.class);
+Set<? extends Element> elements = roundEnvironment.getElementsAnnotatedWith(BindView.class);
 ```
 
 这里的Element有几个子类
@@ -113,6 +113,10 @@ JavaFileObject sourceFile = mFileUtils.createSourceFile(proxyInfo.getProxyClassF
 ```
 
 [简化类库](https://github.com/square/javapoet)
+
+### 一些想法
+
+本来打算做一个和`SharePreference`简化的库，但是思路上一直没想到好的解决方案，后来发现已经有现成的一些库了[Treasure](https://github.com/baoyongzhang/Treasure)，而且这个库的功能上考虑得也比较全了，这一类库都是通过解析注解生成代理类，再使用动态代理的方法来实现的，具体代码没看
 
 ## 参考
 

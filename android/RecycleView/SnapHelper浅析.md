@@ -2,7 +2,9 @@
 
 实现ItemView居中，类似`ViewPager`效果，但并没有居中选中的回调
 
-## SnapHelper 简单介绍
+## SnapHelper简单介绍
+
+抽象类，定义了三个抽象方法
 
 ```java
 abstract class SnapHelper {
@@ -20,11 +22,12 @@ abstract class SnapHelper {
 
 ```java
 LinearLayoutManager layoutManager1 = new LinearLayoutManager(this);
-  layoutManager1.setOrientation(LinearLayoutManager.HORIZONTAL);
-  mMainRecycle1.setLayoutManager(layoutManager1);
-  DemoAdapter demoAdapter1 = new DemoAdapter(title);
-  mMainRecycle1.setAdapter(demoAdapter1);
-  LinearSnapHelper snapHelper1 = new LinearSnapHelper();
+    layoutManager1.setOrientation(LinearLayoutManager.HORIZONTAL);
+    mMainRecycle1.setLayoutManager(layoutManager1);
+    DemoAdapter demoAdapter1 = new DemoAdapter(title);
+    mMainRecycle1.setAdapter(demoAdapter1);
+    LinearSnapHelper snapHelper1 = new LinearSnapHelper();
+    snapHelper1.attachToRecyclerView(mMainRecycle1);
 ```
 
 ## 实现原理

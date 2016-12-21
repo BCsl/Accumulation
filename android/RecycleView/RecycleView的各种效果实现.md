@@ -107,7 +107,7 @@ public void onDrawOver(Canvas c, RecyclerView parent, RecyclerView.State state) 
 
 因为不管是Header或者Footer都是占用一整行的，所以不同的`LayoutManager`有不同的处理
 
-`GridLayoutManager`可以通过重写`SpanSizeLookup`对象来实现某个position的子View占用的网格数量，调用时机`onViewAttachedToWindow`:
+`GridLayoutManager`可以通过重写`SpanSizeLookup`对象来实现某个position的子View占用的网格数量，调用时机`RecyclerView#onAttachedToRecyclerView`:
 
 ```java
 if (manager instanceof GridLayoutManager) {
@@ -121,7 +121,7 @@ if (manager instanceof GridLayoutManager) {
 }
 ```
 
-`StaggeredGridLayoutManager`则需要修改其`StaggeredGridLayoutManager.LayoutParams`对象，所以调用时机上也不同，在`onViewAttachedToWindow`方法：
+`StaggeredGridLayoutManager`则需要修改其`StaggeredGridLayoutManager.LayoutParams`对象，所以调用时机上也不同，在`RecyclerView#onViewAttachedToWindow`方法：
 
 ```java
 ViewGroup.LayoutParams lp = holder.itemView.getLayoutParams();
@@ -134,6 +134,8 @@ if (lp != null && lp instanceof StaggeredGridLayoutManager.LayoutParams) {
 ```
 
 还需要需要注意的是`RecyclerView.AdapterDataObserver`的回调，因为添加了Header，被装饰的Adapter是并不感知且不需要理会，所有逻辑还是自身的那一套，所以`onItemRangeChanged`的一些回调也需要在Index上做相应的改变
+
+目前，很多库添加HeaderView和FooterView都是通过传递一个初始化好的View对象到Adapter，强引用直接保存在Adapter，并没考虑到View的创建和数据的绑定的分离和**缓存**，这对于内存和RecycleView的数据刷新上带来了不必要的麻烦[问题分析和解决](http://blog.csdn.net/zxt0601/article/details/52267325)
 
 ```java
 private RecyclerView.AdapterDataObserver mDataObserver = new RecyclerView.AdapterDataObserver() {

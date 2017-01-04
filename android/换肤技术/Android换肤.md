@@ -30,7 +30,6 @@
 在当前Ativity主题发生改变的时候，遍历当前`Colorful`对象注册的`ViewSetter`，设置新的值
 
 ```java
-
 /**
  * 修改各个视图绑定的属性
  */
@@ -56,7 +55,7 @@ protected int getColor(Theme newTheme) {
 
 使用APT的思想
 
-### 动态下载资源
+### [动态下载资源](./主题插件.md)
 
 #### 好处
 

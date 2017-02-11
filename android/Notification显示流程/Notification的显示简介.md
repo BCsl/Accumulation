@@ -38,7 +38,7 @@ mNotificationManager.notify(MY_ID, mNotification);
 
 以下是`NotificationCompat.Builder#build()`这个方法运行的流程图
 
-![Notification contentView的创建]()
+![Notification contentView的创建](https://raw.githubusercontent.com/BCsl/Accumulation/master/android/Notification%E6%98%BE%E7%A4%BA%E6%B5%81%E7%A8%8B/Notification%E7%9A%84contentView%E6%9E%84%E5%BB%BA.png)
 
 其中`makeContentView`方法，判断`mContentView`是否不为null，是就直接返回，这个`mContentView`是通过`NotificationCompat.Builder#setContent()`赋值的
 
@@ -162,17 +162,17 @@ public void apply(View root, ViewGroup rootParent, OnClickHandler handler) {
 
 Notification的机制简单的分位两大角色，`NotificationManager`和`NotificationListener`，前一个用来发布、更新、管理通知，后一个用于监听通知的变化，典型的观察者模式
 
-![NotificationManager和NotificationListener的类图]()
+![NotificationManager和NotificationListener的类图](https://raw.githubusercontent.com/BCsl/Accumulation/master/android/Notification%E6%98%BE%E7%A4%BA%E6%B5%81%E7%A8%8B/NotificationManager%E5%92%8CNotificationListener%E7%9A%84Binder%E7%B1%BB%E5%9B%BE.png)
 
 ## NotificationListener的注册流程
 
-![NotificationListener的注册流程]()
+![NotificationListener的注册流程](https://raw.githubusercontent.com/BCsl/Accumulation/master/android/Notification%E6%98%BE%E7%A4%BA%E6%B5%81%E7%A8%8B/NotificationListener%E7%9A%84%E6%B3%A8%E5%86%8C%E6%B5%81%E7%A8%8B.png)
 
 `NotificationListener`是SDK18+以上才有的，因为SDK18开始提供了[NotificationListenerService](https://developer.android.com/reference/android/service/notification/NotificationListenerService.html)可以用来读取应用通知，其实现就是通过`NotificationListener`来实现的，其内部有一个`INotificationListener.Stub`类型的Binder本地对象，把其Binder代理对象注册到`NotificationManager`，监听通知的变更，而系统通知栏改也为了用`NotificationListenerService`来实现，通知栏启动的时候启动其内部的`NotificationListenerService`并注册，注册的Binder代理对象会以`ManagerServiceInfo`的形式记录在`NotificationManagerService`的`NotificationListener`列表，并且会在`NotificationListener`的Binder对象销毁的时候自动从列表中移除
 
 ## Notification的发布流程
 
-![Notificaion的发布流程]()
+![Notificaion的发布流程](https://raw.githubusercontent.com/BCsl/Accumulation/master/android/Notification%E6%98%BE%E7%A4%BA%E6%B5%81%E7%A8%8B/Notificaion%E7%9A%84%E5%8F%91%E5%B8%83%E6%B5%81%E7%A8%8B.png)
 
 用户通过`NotificationManager.notify()`方法发送、更新一个通知，通过Binder进行通信，最终由`NotificationManagerService`来统一处理，每个`Notificaion`都会在`NotificationManagerService`中已`NotificationRecord`的形式为记录，`NotificationManagerService`并没有UI相关的逻辑
 

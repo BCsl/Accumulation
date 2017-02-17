@@ -86,7 +86,7 @@ final class SharedPreferencesImpl implements SharedPreferences {
         }
         new Thread("SharedPreferencesImpl-load") {
             public void run() {
-                synchronized (SharedPreferencesImpl.this) {
+                synchronized (SharedPreferencesImpl.this) { //新线程获取当前对象的锁
                     loadFromDiskLocked();
                 }
             }
@@ -193,7 +193,7 @@ final class SharedPreferencesImpl implements SharedPreferences {
             mListeners.remove(listener);
         }
     }
-
+    //初始化的时候启动新线程获取对象的锁并解析文件，如果调用了`getXXX`操作而先获取到了锁的情况下，使用wait()方法会释放锁资源到加载线程，并等待加载线程的notify方法而继续工作
     private void awaitLoadedLocked() {
         if (!mLoaded) {
             // Raise an explicit StrictMode onReadFromDisk for this
@@ -203,7 +203,7 @@ final class SharedPreferencesImpl implements SharedPreferences {
         }
         while (!mLoaded) {
             try {
-                wait();
+                wait(); //wait需要获取对象的锁
             } catch (InterruptedException unused) {
             }
         }

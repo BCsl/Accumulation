@@ -29,7 +29,7 @@ boolean resumeTopActivitiesLocked(ActivityStack targetStack, ActivityRecord targ
 
 ## Setp26
 
-暂停完所有`ActivityStack`的`mResumedActivity`后，就需要显示当前前台栈栈顶的Activity，因为还不可见，所以添加到ActivityStackSupervisor的`mWaitingVisibleActivities`中等待显示，通过`WindowManagerService#setAppVisibility`来进行界面的显示？并设置`WWindowManagerService`转换动画，由于所属进程并未创建，最后调用`ActivityStackSupervisor.startSpecificActivityLocked`
+暂停完所有`mLastStack`的`mResumedActivity`后，就需要显示当前`mFocusedStack`栈顶的Activity，通过`WindowManagerService#setAppVisibility`来进行界面的显示？并设置`WWindowManagerService`转换动画，由于所属进程并未创建，最后调用`ActivityStackSupervisor.startSpecificActivityLocked`
 
 ```java
 ActivityStack.java
@@ -151,15 +151,12 @@ final boolean resumeTopActivityLocked(ActivityRecord prev, Bundle options) {
         boolean anim = true;
         if (prev != null) {
             if (prev.finishing) {
-                if (DEBUG_TRANSITION) Slog.v(TAG,
-                        "Prepare close transition: prev=" + prev);
+                if (DEBUG_TRANSITION) Slog.v(TAG,"Prepare close transition: prev=" + prev);
                 if (mNoAnimActivities.contains(prev)) {
                     anim = false;
                     mWindowManager.prepareAppTransition(AppTransition.TRANSIT_NONE, false);
                 } else {
-                    mWindowManager.prepareAppTransition(prev.task == next.task
-                            ? AppTransition.TRANSIT_ACTIVITY_CLOSE
-                            : AppTransition.TRANSIT_TASK_CLOSE, false);//TRANSIT_TASK_CLOSE
+                    mWindowManager.prepareAppTransition(prev.task == next.task? AppTransition.TRANSIT_ACTIVITY_CLOSE: AppTransition.TRANSIT_TASK_CLOSE, false);//TRANSIT_TASK_CLOSE
                 }
                 mWindowManager.setAppWillBeHidden(prev.appToken);
                 mWindowManager.setAppVisibility(prev.appToken, false);
@@ -169,9 +166,7 @@ final boolean resumeTopActivityLocked(ActivityRecord prev, Bundle options) {
                     anim = false;
                     mWindowManager.prepareAppTransition(AppTransition.TRANSIT_NONE, false);
                 } else {
-                    mWindowManager.prepareAppTransition(prev.task == next.task
-                            ? AppTransition.TRANSIT_ACTIVITY_OPEN
-                            : AppTransition.TRANSIT_TASK_OPEN, false);
+                    mWindowManager.prepareAppTransition(prev.task == next.task? AppTransition.TRANSIT_ACTIVITY_OPEN: AppTransition.TRANSIT_TASK_OPEN, false);
                 }
             }
         } else {
@@ -534,8 +529,7 @@ private void attach(boolean system) {
                 if (mResourcesManager.applyConfigurationToResourcesLocked(newConfig, null)) {
                     // This actually changed the resources!  Tell
                     // everyone about it.
-                    if (mPendingConfiguration == null ||
-                            mPendingConfiguration.isOtherSeqNewer(newConfig)) {
+                    if (mPendingConfiguration == null || mPendingConfiguration.isOtherSeqNewer(newConfig)) {
                         mPendingConfiguration = newConfig;
 
                         queueOrSendMessage(H.CONFIGURATION_CHANGED, newConfig);
@@ -582,7 +576,7 @@ ActivityManagerService.java
 
 case ATTACH_APPLICATION_TRANSACTION: {
          data.enforceInterface(IActivityManager.descriptor);
-         IApplicationThread app = ApplicationThreadNative.asInterface(data.readStrongBinder()); //转换成Binder代理对象ApplicationThreadProxy
+         IApplicationThread app = ApplicationThreadNative.asInterface(data.readStrongBinder());
          if (app != null) {
              attachApplication(app);
          }
@@ -1051,7 +1045,7 @@ boolean attachApplicationLocked(ProcessRecord app, boolean headless) throws Exce
 保存正要启动的`ActivityRecord`记录的进程信息，重要的是`app.thread.scheduleLaunchActivity`的调用
 
 ```java
-ActivityManagerService.java
+ActivityStackSupervisor.java
 
 //andResume:true,checkConfig:true
 final boolean realStartActivityLocked(ActivityRecord r,ProcessRecord app, boolean andResume, boolean checkConfig)

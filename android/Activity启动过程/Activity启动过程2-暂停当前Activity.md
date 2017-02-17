@@ -58,8 +58,7 @@ final void startPausingLocked(boolean userLeaving, boolean uiSleeping) {
            try {
                mService.updateUsageStats(prev, false);
                //发送终止通知，以便执行数据保存操作
-               //（见Step29,记录在Processrecord#thread是binder本地对象，并非代理对象，所以可能并没有经过进程间通信来处理`sch//edulePauseActivity`方法？）
-               //__update:2016-01-03但如果这样暂停超时便没有了意义？,但是`ApplicationThread`各种的调度是通过发送消息到`ActivityThread`的`Handler`成语变量`H`来处理！所以也是一个异步操作__
+               // IApplicationThread
                prev.app.thread.schedulePauseActivity(prev.appToken, prev.finishing,userLeaving, prev.configChangeFlags);
            } catch (Exception e) {
                // Ignore exception, if process died other code will cleanup.
@@ -186,7 +185,6 @@ public final void schedulePauseActivity(IBinder token, boolean finished,boolean 
 `ActivityThread`内`Handle`类型的成员变量`mH`处理`PAUSE_ACTIVITY`消息
 
 ```java
-
 case PAUSE_ACTIVITY:
                    Trace.traceBegin(Trace.TRACE_TAG_ACTIVITY_MANAGER, "activityPause");
                    handlePauseActivity((IBinder)msg.obj, false, msg.arg1 != 0, msg.arg2);
@@ -364,8 +362,7 @@ case ACTIVITY_PAUSED_TRANSACTION: {
 ```
 
 ```java
-
-    @Override
+@Override
     public final void activityPaused(IBinder token) {
         final long origId = Binder.clearCallingIdentity();
         synchronized(this) {
@@ -423,9 +420,8 @@ private void completePauseLocked() {
                     if (DEBUG_PAUSE) Slog.v(TAG, "Destroying after pause: " + prev);
                     destroyActivityLocked(prev, true, false, "pause-config");
                 } else {
-                    mStackSupervisor.mStoppingActivities.add(prev);//
-                    if (mStackSupervisor.mStoppingActivities.size() > 3 ||
-                            prev.frontOfTask && mTaskHistory.size() <= 1) {
+                    mStackSupervisor.mStoppingActivities.add(prev); //添加到mStoppingActivities，
+                    if (mStackSupervisor.mStoppingActivities.size() > 3 || prev.frontOfTask && mTaskHistory.size() <= 1) {
                         // If we already have a few activities waiting to stop,
                         // then give up on things going idle and start clearing
                         // them out. Or if r is the last of activity of the last task the stack
@@ -447,37 +443,12 @@ private void completePauseLocked() {
         if (!mService.isSleepingOrShuttingDown()) {
             mStackSupervisor.resumeTopActivitiesLocked(topStack, prev, null);//会到Step14
         } else {
-            mStackSupervisor.checkReadyForSleepLocked();
-            ActivityRecord top = topStack.topRunningActivityLocked(null);
-            if (top == null || (prev != null && top != prev)) {
-                // If there are no more activities available to run,do resume anyway to start something.  Also if the top
-                // activity on the stack is not the just paused activity,we need to go ahead and resume it to ensure we complete
-                // an in-flight app switch.
-                mStackSupervisor.resumeTopActivitiesLocked(topStack, null, null);
-            }
+          //...
         }
 
         if (prev != null) {
             prev.resumeKeyDispatchingLocked();
-
-            if (prev.app != null && prev.cpuTimeAtResume > 0
-                    && mService.mBatteryStatsService.isOnBattery()) {
-                long diff;
-                synchronized (mService.mProcessCpuThread) {
-                    diff = mService.mProcessCpuTracker.getCpuTimeForPid(prev.app.pid)
-                            - prev.cpuTimeAtResume;
-                }
-                if (diff > 0) {
-                    BatteryStatsImpl bsi = mService.mBatteryStatsService.getActiveStatistics();
-                    synchronized (bsi) {
-                        BatteryStatsImpl.Uid.Proc ps =
-                                bsi.getProcessStatsLocked(prev.info.applicationInfo.uid,prev.info.packageName);
-                        if (ps != null) {
-                            ps.addForegroundTimeLocked(diff);
-                        }
-                    }
-                }
-            }
+            //..
             prev.cpuTimeAtResume = 0; // reset it
         }
     }

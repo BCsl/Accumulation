@@ -24,6 +24,20 @@
   - 当`ActivityRecord`所需要的信息都初始化好（`ActivityStack`,`TaskRecord`,`Processrecord`），`AMS`通过`ApplicationThread`调度启动`Activity`,会想创建`ActivityClientRecord`对象保存需要启动的`Activity`信息，保留了`ActivityRecord`的`Token`值，并以`Token`值保留在了`ActivityThread`的`HashMap`类型的成员变量`mActivities`中，之后的一些回调就可以通过`ActivityClientRecord`来找到对应的`Activity`来回调，而`AMS`需要再次调度`Activity`得时候，通过其保存的`ActivityRecord`的`Token`就可以找到`ActivityClientRecord`
   - `Activity`的构造和`attach`都需要用到`ActivityClientRecord`记录的信息，新建的`Activity`也记录在了`ActivityClientRecord`中，而`ActivityClientRecord`保存在`ActivityThread`中，之后的生命周期的调度就可以通过`ActivityClientRecord`来找到对应的`Activity`
 
+### Activity的创建流程
+
+简述：
+
+- 发送`Intent`到Ams代表启动`Activity`的请求
+- Ams检测相关的启动权限、通过PMS解析待启动`Activity`的信息
+- Ams为需要启动的`Activity`创建一个`ActivityRecord`对象，并保存
+- Ams调度待启动的`Activity`的生命周期，首先是create阶段，Ams通知`ActivityThread`可以启动`Activity`，并把`ActivityRecord`对象的`Binder`类型的成员变量`Token`发送过来
+- `ActivityThread`为要启动的`Activity`创建`ActivityClientRecord`对象，关联`Token`，并保存
+- 调用`Instrumentation`来调度`Activity`的Create阶段，根据`ActivityClientRecord`信息通过反射创建具体的`Activity`对象
+- 接着还是借助`Instrumentation`来调度`Activity`的生命周期回调
+
+![Activity、ActivityClientRecord和ActivityRecord](../Activity启动过程/Ams和ActivityThread间联系.png)
+
 - 2.新进程的启动
 
 - 3.发送到`AMS`的`ApplicationThread`是一个`Binder`本地对象？

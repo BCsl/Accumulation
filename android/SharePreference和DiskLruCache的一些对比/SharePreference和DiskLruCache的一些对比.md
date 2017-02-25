@@ -48,6 +48,8 @@
 
 实现一个[多进程共享数据的SharePreference](https://github.com/seven456/MultiprocessSharedPreferences/blob/master/library/src/com/android/zgj/utils/MultiprocessSharedPreferences.java)
 
+[请不要滥用SharedPreference](http://weishu.me/2016/10/13/sharedpreference-advices/)
+
 ### DiskLruCache
 
 可以指定版本，前后版本不一致，会删除之前的journal文件，也就是重新新建缓存库；可以指定缓存大小，超过了就移除最旧的数据；其journal文件保存了对缓存库的所有的操作，这样有助于在每次初始化解析的时候保持其`LRU`特性，在日志冗余信息行过多的情况下，会重新构建journal文件，根据现在保存的值，只记录`CLEAN`和`DIRTY`行（如果正在编辑）；初始化、读、写操作都是在UI线程的，如果数据量大，最好在子线程来处理；存取数据的灵活性比较高

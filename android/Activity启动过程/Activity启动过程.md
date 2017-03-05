@@ -654,11 +654,14 @@ ActivityRecord(ActivityManagerService _service, ProcessRecord _caller,
 
 ## Step12
 
-新建或重用`ActivityStack`,`TaskRecord`，**各种launcerMode和IntentFlag的处理**，最后调用目标`ActivityStack`的`startActivityLocked`方法 下面是三种情况下，其启动的Intent.FLAG会带上Intent.FLAG_ACTIVITY_NEW_TASK，代表可能需要在新的任务栈启动目标`Activity`：
+新建或重用`ActivityStack`,`TaskRecord`，**各种launcerMode和IntentFlag的处理**，最后调用目标`ActivityStack`的`startActivityLocked`方法 下面是三种情况下，其启动的Intent.FLAG会带上`Intent.FLAG_ACTIVITY_NEW_TASK`，代表可能需要在新的任务栈启动目标`Activity`：
 
 - （1）`sourceRecord=null`说明要启动的`Activity`并不是由一个`Activity`的`Context`启动的，这时候我们总是启动一个新的`TASK`
-- （2）`Launcher`是`SingleInstance`模式（或者说启动新的`Activity`的源`Activity`的`launchMode`为`SingleInstance`）
-- （3）需要启动的`Activity`的`launchMode == ActivityInfo.LAUNCH_SINGLE_INSTANCE|| r.launchMode ==ActivityInfo.LAUNCH_SINGLE_TASK` 其中可以发现:**`SingleTask`模式，但是它并不像官方文档描述的一样：`The system creates a new task and instantiates the activity at the root of the new task`，而是在跟它有相同`taskAffinity`的任务中启动，并且位于这个任务的堆栈顶端，所以如果指定特定的`taskAffinity`，就可以在新的`TaskRecord`启动**
+- （2）`Launcher`是`SingleInstance`模式（或者说启动新的`Activity`的源`Activity`的`launchMode`为`SingleInstance`）,因为`SingleInstance`模式的`Activity`不希望和你分享同一个`TaskRecord`
+- （3）需要启动的`Activity`的`launchMode == ActivityInfo.LAUNCH_SINGLE_INSTANCE|| r.launchMode ==ActivityInfo.LAUNCH_SINGLE_TASK`，因为表明了自己希望在新的`TaskRecord`中启动
+- （4）`sourceRecord`正在`finish`
+
+  最后可以发现:**`SingleTask`模式，但是它并不像官方文档描述的一样：`The system creates a new task and instantiates the activity at the root of the new task`，而是在跟它有相同`taskAffinity`的任务中启动，并且位于这个任务的堆栈顶端，所以如果指定特定的`taskAffinity`，就可以在新的`TaskRecord`启动**
 
 ```java
 ActivityStackSupervisor.java
@@ -703,16 +706,11 @@ final int startActivityUncheckedLocked(ActivityRecord r,ActivityRecord sourceRec
                startFlags &= ~ActivityManager.START_FLAG_ONLY_IF_NEEDED;
            }
        }
-       //下面是三种可能需要创建新的TASK的情况：
-       //（1）sourceRecord=null说明要启动的Activity并不是由一个Activity的Context启动的，这时候我们总是启动一个新的TASK。
-       //（2）Launcher是SingleInstance模式（或者说启动新的Activity的源Activity的launchMode为SingleInstance）
-       //（3）需要启动的Activity的launchMode == ActivityInfo.LAUNCH_SINGLE_INSTANCE|| r.launchMode == //ActivityInfo.LAUNCH_SINGLE_TASK
-       //（4）当前`Activity`被一个正在`finishing`的`Activity`启动
+
        if (sourceRecord == null) {
             //这种情况下是否和启动来自Service和BroadcastReceiver的context一致？
            // This activity is not being started from another...  in this case we -always- start a new task.
            if ((launchFlags&Intent.FLAG_ACTIVITY_NEW_TASK) == 0) {
-               Slog.w(TAG, "startActivity called from non-Activity context; forcing " +"Intent.FLAG_ACTIVITY_NEW_TASK for: " + intent);
                launchFlags |= Intent.FLAG_ACTIVITY_NEW_TASK;
            }
        } else if (sourceRecord.launchMode == ActivityInfo.LAUNCH_SINGLE_INSTANCE) {
@@ -731,9 +729,7 @@ final int startActivityUncheckedLocked(ActivityRecord r,ActivityRecord sourceRec
                // is because the task it is associated with may now be empty and on its way out,
                // so we don't want to blindly throw it in to that task.  Instead we will take
                // the NEW_TASK flow and try to find a task for it.
-               //如果sourceRecord已经处于finishing状态，那么他所在的Task就很有可能已经为空或者即将为空
                if ((launchFlags&Intent.FLAG_ACTIVITY_NEW_TASK) == 0) {
-                   Slog.w(TAG, "startActivity called from finishing " + sourceRecord + "; forcing " + "Intent.FLAG_ACTIVITY_NEW_TASK for: " + intent);
                    launchFlags |= Intent.FLAG_ACTIVITY_NEW_TASK;
                }
                sourceRecord = null;
@@ -752,16 +748,15 @@ final int startActivityUncheckedLocked(ActivityRecord r,ActivityRecord sourceRec
            // is pretty messed up, so instead immediately send back a cancel
            // and let the new task continue launched as normal without a
            // dependency on its originator.
-           Slog.w(TAG, "Activity is launching as a new task, so cancelling activity result.");
            r.resultTo.task.stack.sendActivityResultLocked(-1, r.resultTo, r.resultWho, r.requestCode,Activity.RESULT_CANCELED, null);
            r.resultTo = null;
        }
-
+       //这个变量也将决定是否要将在新的任务中启动。默认不增加到原有的任务中启动，即要在新的任务中启动
        boolean addingToTask = false;
        boolean movedHome = false;
        TaskRecord reuseTask = null;
        ActivityStack targetStack;
-       //FLAG_ACTIVITY_NEW_TASK标志位为1，FLAG_ACTIVITY_MULTIPLE_TASK会为0
+       //FLAG_ACTIVITY_NEW_TASK标志位为1，FLAG_ACTIVITY_MULTIPLE_TASK为默认模式
        //FLAG_ACTIVITY_MULTIPLE_TASK：Do not use this flag unless you are implementing your own top-level application //launcher.
        if (((launchFlags&Intent.FLAG_ACTIVITY_NEW_TASK) != 0 && (launchFlags&Intent.FLAG_ACTIVITY_MULTIPLE_TASK) == 0)
                || r.launchMode == ActivityInfo.LAUNCH_SINGLE_TASK
@@ -779,9 +774,9 @@ final int startActivityUncheckedLocked(ActivityRecord r,ActivityRecord sourceRec
                //intentActivity 所在的TASK就是要启动的Activity所在的Task，要启动的Activity所在的Stack
                //targetStack就是intentActivity所在的Stack。
                //这里为NULL,先忽略(这里有关于ActivityInfo.LAUNCH_SINGLE_TASK是否在新栈启动的逻辑).
-               if (intentActivity != null) {//false 结束953
-                //....launchMode和IntentFLag的处理，见《LaunchMode的处理》
-                }// Start795
+               if (intentActivity != null) {
+                //....launchMode和IntentFLag的处理，见“LaunchMode的处理”
+                }
            }
        }
       //上段代码的逻辑是看一下，当前在堆栈是否有要启动的Activity的ActivityRecord，如果有那么对于不同的launchMode就会要进行不同的响应
@@ -791,49 +786,19 @@ final int startActivityUncheckedLocked(ActivityRecord r,ActivityRecord sourceRec
            // once.
            //这段代码的逻辑是看一下，当前在堆栈顶端的Activity是否就是即将要启动的Activity，有些情况下，LAUNCH_SINGLE_TOP||LAUNCH_SINGLE_TASK||FLAG_ACTIVITY_SINGLE_TOP，如果即将要启动的Activity就在堆栈的顶端，那么，就不会重新启动这个Activity的别一个实例了
            ActivityStack topStack = getFocusedStack();//mHomeStack
-           //从最新的Taskrecord开始遍历mTaskHistory,然后遍历TaskRecord中的mActivity，找到第一个状态不为finishing，
-           //不为delayedResume，不等于参数r，且okToShow方法返回true的ActivityRecord，这里的top会为null
-           ActivityRecord top = topStack.topRunningNonDelayedActivityLocked(notTop); //notTop为null
+           //启动的用户不一样，notTop为null，一般为应用内启动
+           ActivityRecord top = topStack.topRunningNonDelayedActivityLocked(notTop);
            if (top != null && r.resultTo == null) {
-               if (top.realActivity.equals(r.realActivity) && top.userId == r.userId) {
-                   if (top.app != null && top.app.thread != null) {//825
-                       if ((launchFlags&Intent.FLAG_ACTIVITY_SINGLE_TOP) != 0
-                           || r.launchMode == ActivityInfo.LAUNCH_SINGLE_TOP
-                           || r.launchMode == ActivityInfo.LAUNCH_SINGLE_TASK) {
-                           // For paranoia, make sure we have correctly
-                           // resumed the top activity.
-                           topStack.mLastPausedActivity = null;
-                           if (doResume) {
-                               resumeTopActivitiesLocked();
-                           }
-                           ActivityOptions.abort(options);
-                           if ((startFlags&ActivityManager.START_FLAG_ONLY_IF_NEEDED) != 0) {
-                               // We don't need to start a new activity, and
-                               // the client said not to do anything if that
-                               // is the case, so this is it!
-                               if (r.task == null)  Slog.v(TAG,
-                                   "startActivityUncheckedLocked: task left null",
-                                   new RuntimeException("here").fillInStackTrace());
-                               return ActivityManager.START_RETURN_INTENT_TO_CALLER;
-                           }
-                           //传递onNewIntent
-                           top.deliverNewIntentLocked(callingUid, r.intent);
-                           if (r.task == null)  Slog.v(TAG,
-                               "startActivityUncheckedLocked: task left null",
-                               new RuntimeException("here").fillInStackTrace());
-                           return ActivityManager.START_DELIVERED_TO_TOP;
-                       }
-                   }//799
-               }
+               if (top.realActivity.equals(r.realActivity) && top.userId == r.userId) { //应用内启动，且栈顶应用即是要启动的Activity
+                  //....见“LaunchMode的处理”,Activity#onNewIntent回调，并返回
+                }
            }
-
        } else {
            if (r.resultTo != null) {
                r.resultTo.task.stack.sendActivityResultLocked(-1, r.resultTo, r.resultWho, r.requestCode, Activity.RESULT_CANCELED, null);
            }
            ActivityOptions.abort(options);
-           if (r.task == null)  
-                Slog.v(TAG,"startActivityUncheckedLocked: task left null", new RuntimeException("here").fillInStackTrace());
+           //...
            return ActivityManager.START_CLASS_NOT_FOUND;
        }
 
@@ -842,7 +807,8 @@ final int startActivityUncheckedLocked(ActivityRecord r,ActivityRecord sourceRec
 
        // Should this be considered a new task?
        //addingToTask为false，因为前面的intentActivity为null
-       if (r.resultTo == null && !addingToTask && (launchFlags&Intent.FLAG_ACTIVITY_NEW_TASK) != 0) {//true
+       if (r.resultTo == null && !addingToTask && (launchFlags&Intent.FLAG_ACTIVITY_NEW_TASK) != 0) {
+          //这种情况下，newTask为true，不进入该判断，newTask为false，代表不需要创建新的TaskRecord
            targetStack = adjustStackFocus(r);//见AMS中的两种ActivityStack，新建ActivityStack，得到mFocusStack
            moveHomeStack(targetStack.isHomeStack());//状态修改为STACK_STATE_HOME_TO_BACK
            if (reuseTask == null) { //同addingToTask，reuseTask为null
@@ -860,29 +826,50 @@ final int startActivityUncheckedLocked(ActivityRecord r,ActivityRecord sourceRec
                    r.task.mOnTopOfHome = true;
                }
            }
-       } else if (sourceRecord != null) {
+       } else if (sourceRecord != null) { //应用内启动，待启动Activity和发起启动的Activity同一个栈
             TaskRecord sourceTask = sourceRecord.task;
             targetStack = sourceTask.stack;
             moveHomeStack(targetStack.isHomeStack());
-            if (!addingToTask &&
-                    (launchFlags&Intent.FLAG_ACTIVITY_CLEAR_TOP) != 0) {
+            if (!addingToTask && (launchFlags&Intent.FLAG_ACTIVITY_CLEAR_TOP) != 0) {
                 // In this case, we are adding the activity to an existing
                 // task, but the caller has asked to clear that task if the
                 // activity is already running.
-                //...
-            } else if (!addingToTask &&
-                    (launchFlags&Intent.FLAG_ACTIVITY_REORDER_TO_FRONT) != 0) {
+                ActivityRecord top = sourceTask.performClearTaskLocked(r, launchFlags);
+                keepCurTransition = true;
+                if (top != null) {
+                  top.deliverNewIntentLocked(callingUid, r.intent);
+                  // For paranoia, make sure we have correctly
+                  // resumed the top activity.
+                  targetStack.mLastPausedActivity = null;
+                  if (doResume) {
+                    targetStack.resumeTopActivityLocked(null);
+                  }
+                  ActivityOptions.abort(options);
+                  //...
+                  return ActivityManager.START_DELIVERED_TO_TOP;
+                }
+            } else if (!addingToTask && (launchFlags&Intent.FLAG_ACTIVITY_REORDER_TO_FRONT) != 0) {
                 // In this case, we are launching an activity in our own task
                 // that may already be running somewhere in the history, and
                 // we want to shuffle it to the front of the stack if so.
-                //...
+                final ActivityRecord top = sourceTask.findActivityInHistoryLocked(r);
+                if (top != null) {
+                    final TaskRecord task = top.task;
+                    task.moveActivityToFrontLocked(top);
+                    ActivityStack.logStartActivity(EventLogTags.AM_NEW_INTENT, r, task);
+                    top.updateOptionsLocked(options);
+                    top.deliverNewIntentLocked(callingUid, r.intent);
+                    targetStack.mLastPausedActivity = null;
+                    if (doResume) {
+                        targetStack.resumeTopActivityLocked(null);
+                    }
+                    return ActivityManager.START_DELIVERED_TO_TOP;
+                }
             }
             // An existing activity is starting this new activity, so we want
             // to keep the new one in the same task as the one that is starting
             // it.
             r.setTask(sourceTask, sourceRecord.thumbHolder, false);
-            if (DEBUG_TASKS) Slog.v(TAG, "Starting new activity " + r
-                    + " in existing task " + r.task + " from source " + sourceRecord);
 
         } else {
            // This not being started from an existing activity, and not part
@@ -900,8 +887,6 @@ final int startActivityUncheckedLocked(ActivityRecord r,ActivityRecord sourceRec
        return ActivityManager.START_SUCCESS;
    }
 ```
-
-**READMORE:创建新的TaskRecord**
 
 创建新的`TaskRecord`对象并插入到`mTaskHistory`栈顶
 
@@ -967,9 +952,25 @@ final void startActivityLocked(ActivityRecord r, boolean newTask,boolean doResum
             mWindowManager.moveTaskToTop(taskId);
         }
         TaskRecord task = null;
-        if (!newTask) {//false
-          //不是新的任务
-        //...
+        if (!newTask) {//如果是应用内启动，且在相同栈，进入这里的判断
+          // If starting in an existing task, find where that is...
+          boolean startIt = true;
+          for (int taskNdx = mTaskHistory.size() - 1; taskNdx >= 0; --taskNdx) {
+              task = mTaskHistory.get(taskNdx);
+              if (task == r.task) {
+                //如果这个原有的Task当前对用户不可见时，这时候就不需要继续执行下去了，因为即使把这个Activity启动起来，用户也看不到，还不如先把它保存起来，等到下次这个Task对用户可见的时候，再启动不迟
+                  if (!startIt) {
+                      task.addActivityToTop(r);
+                      r.putInHistory();
+                      //....
+                      ActivityOptions.abort(options);
+                      return;
+                  }
+                  break;
+              } else if (task.numFullscreen > 0) {
+                  startIt = false;
+              }
+          }
         }
         // Place a new activity at top of stack, so it is next to interact with the user.
         // If we are not placing the new activity front most, we do not want
@@ -1138,11 +1139,15 @@ final boolean resumeTopActivityLocked(ActivityRecord prev, Bundle options) {
         }
 
         // We need to start pausing the current activity so the top one can be resumed...
-        //分别暂停所有`mStacks`中不是前台`Stack`中的所有`mResumedActivity`和暂停当前栈的`mResumedActivity`
+        //分别暂停所有`mStacks`中不是前台`Stack`中的所有`mResumedActivity`，也就是`mHomeStack`中的Launcher
         boolean pausing = mStackSupervisor.pauseBackStacks(userLeaving);//返回true
-        if (mResumedActivity != null) {//mResumedActivity为Launcher的`ActivityStack`
+        //上一步是暂停其他栈的mResumedActivity，这里则是暂停当前栈的mResumedActivity，当然一般只会走其中一步
+        //至于下一步的场景是这样的，当前获得焦点mFocusStack，有两个TaskRecord，TaskRecord1显示在前台，显示了ActivityA，那么TaskRecord0则显示在后台
+        //现在A要打开TaskRecord0中的B，而B已然存在，而且是SingleTask的，就需要把TaskRecord0置为前台，而现在的mHomeStack中的mResumedActivity就是null
+        //而当前ActivityStack的mResumedActivity就是A，所以要暂停A
+        if (mResumedActivity != null) {//mResumedActivity为null，当前Stack为mFocusStack
             pausing = true;
-            startPausingLocked(userLeaving, false);//暂停栈正在显示的Activity，见Step17
+            startPausingLocked(userLeaving, false);
             if (DEBUG_STATES) Slog.d(TAG, "resumeTopActivityLocked: Pausing " + mResumedActivity);
         }
         //如果有需要pause的Activity，则需要先暂停再显示当前需要显示的
@@ -1170,5 +1175,5 @@ final boolean resumeTopActivityLocked(ActivityRecord prev, Bundle options) {
 
 - [ActivityStackSupervisor.StartActivityUncheckedLocked()函数分析](http://www.aiuxian.com/article/p-1880233.html)
 - [Activity管理机制](http://blog.csdn.net/guoqifa29/article/details/39341931)
-- <http://blog.csdn.net/guoqifa29/article/details/40015127>
+- [ActivityStackSupervisor分析](http://blog.csdn.net/guoqifa29/article/details/40015127)
 - [Activity生命周期的回调，你应该知道得更多](http://blog.csdn.net/yalinfendou/article/details/46909173)

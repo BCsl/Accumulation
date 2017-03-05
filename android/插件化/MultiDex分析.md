@@ -76,7 +76,9 @@ public static void install(Context context) {
 }
 ```
 
-如何安装？`DexClassLoader`在构造的时候就会读取指定目录下的zip、dex、jar等文件，加载成`DexFile`，并构造成`Element`数组，记录在成员`pathList`下，以后类的加载都会尝试在这些`DexFile`中寻找，而在dex分包后，就需要自己把"新的dex的文件路径" 告诉`DexClassLoader`，这里以SDK19+为例子来说(对14,15,16,17and18来说区别在于`DexPathList#makeDexElements`方法签名的改变，4到13的改变稍微有点大，但现在也不会开发14以下的了就不细看了)
+### 如何安装
+
+`DexClassLoader`在构造的时候就会读取指定目录下的zip、dex、jar等文件，加载成`DexFile`，并构造成`Element`数组，记录在成员`pathList`下，以后类的加载都会尝试在这些`DexFile`中寻找，而在dex分包后，就需要自己把"新的dex的文件路径" 告诉`DexClassLoader`，这里以SDK19+为例子来说(对14,15,16,17and18来说区别在于`DexPathList#makeDexElements`方法签名的改变，4到13的改变稍微有点大，但现在也不会开发14以下的了就不细看了)
 
 ```java
 private static void installSecondaryDexes(ClassLoader loader, File dexDir, List<File> files) {
@@ -123,7 +125,7 @@ private static final class V19 {
 }
 ```
 
-### Dex拆分流程
+### Dex读取
 
 Dex的拆分在`MultiDexExtractor#load`方法进行
 

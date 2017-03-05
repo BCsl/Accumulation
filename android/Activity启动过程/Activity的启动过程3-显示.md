@@ -10,7 +10,7 @@ ActivityStackSupervisor.java
 //targetStack:mForceStack，setp12新建的，target:上一个暂停的`Activity`(`mHomeStack`的Laucher)，targetOptions:null
 boolean resumeTopActivitiesLocked(ActivityStack targetStack, ActivityRecord target,Bundle targetOptions) {
      if (targetStack == null) {
-         targetStack = getFocusedStack();//mForceStack,当前状态STACK_STATE_HOME_IN_BACK（Step12）
+         targetStack = getFocusedStack();//mForceStack,当前状态STACK_STATE_HOME_TO_BACK（Step12）
      }
      boolean result = false;
      for (int stackNdx = mStacks.size() - 1; stackNdx >= 0; --stackNdx) {
@@ -150,32 +150,7 @@ final boolean resumeTopActivityLocked(ActivityRecord prev, Bundle options) {
         //开始显示next，需要隐藏prev
         boolean anim = true;
         if (prev != null) {
-            if (prev.finishing) {
-                if (DEBUG_TRANSITION) Slog.v(TAG,"Prepare close transition: prev=" + prev);
-                if (mNoAnimActivities.contains(prev)) {
-                    anim = false;
-                    mWindowManager.prepareAppTransition(AppTransition.TRANSIT_NONE, false);
-                } else {
-                    mWindowManager.prepareAppTransition(prev.task == next.task? AppTransition.TRANSIT_ACTIVITY_CLOSE: AppTransition.TRANSIT_TASK_CLOSE, false);//TRANSIT_TASK_CLOSE
-                }
-                mWindowManager.setAppWillBeHidden(prev.appToken);
-                mWindowManager.setAppVisibility(prev.appToken, false);
-            } else {
-                if (DEBUG_TRANSITION) Slog.v(TAG, "Prepare open transition: prev=" + prev);
-                if (mNoAnimActivities.contains(next)) {
-                    anim = false;
-                    mWindowManager.prepareAppTransition(AppTransition.TRANSIT_NONE, false);
-                } else {
-                    mWindowManager.prepareAppTransition(prev.task == next.task? AppTransition.TRANSIT_ACTIVITY_OPEN: AppTransition.TRANSIT_TASK_OPEN, false);
-                }
-            }
-        } else {
-          if (mNoAnimActivities.contains(next)) {
-               anim = false;
-               mWindowManager.prepareAppTransition(AppTransition.TRANSIT_NONE, false);
-           } else {
-               mWindowManager.prepareAppTransition(AppTransition.TRANSIT_ACTIVITY_OPEN, false);
-           }
+          //..
         }
         if (anim) {
             next.applyOptionsLocked();

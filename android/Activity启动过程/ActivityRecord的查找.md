@@ -2,7 +2,7 @@
 
 当启动一个Activity请求发送到Ams后，AMS为该Activity新建一个`ActivityRecord`对象，但AMS可能已经启动过这个Activity，也就是`ActivityStack`内有一个相同的`ActivityRecord` ，它记录了其所在的`ActivityStack`和`TaskRecord`，对于launcheMode是否为`ActivityInfo.LAUNCH_SINGLE_INSTANCE`有两种方式来查找
 
-## 非ActivityInfo.LAUNCH_SINGLE_INSTANCE
+## 非ActivityInfo.LAUNCH_SINGLE_INSTANCE，判断栈顶有效的Activity
 
 匹配`TaskRecord`栈顶的第一个非finishing状态的`ActivityRecord`
 
@@ -13,7 +13,8 @@ ActivityRecord findTaskLocked(ActivityRecord r) {
     //mStacks，正常只有两个，mHomeStack和mFocusedStack
     for (int stackNdx = mStacks.size() - 1; stackNdx >= 0; --stackNdx) {
         final ActivityStack stack = mStacks.get(stackNdx);
-        //不是普通的Activity，而当前栈又不是HomeStack就过滤，也就是`APPLICATION_ACTIVITY_TYPE`类型的都存放在HomeStack?
+        //不是普通的Activity，而当前栈又不是HomeStack就过滤，也就是非`APPLICATION_ACTIVITY_TYPE`类型的都存放在HomeStack?
+        //而`APPLICATION_ACTIVITY_TYPE`只能放到非HomeStack
         if (!r.isApplicationActivity() && !stack.isHomeStack()) {
             continue;
         }
@@ -26,7 +27,7 @@ ActivityRecord findTaskLocked(ActivityRecord r) {
 }
 ```
 
-接着调用了`ActivityStack#findTaskLocked`，遍历`TaskRecord`
+接着调用了`ActivityStack#findTaskLocked`，遍历`TaskRecord`，找到栈顶（非finish状态不考虑），userId相同、非`SINGLE_INSTANCE`、affinity值相同（默认为包名）或者`component`（包名和类名）相同的Activity
 
 ```java
 ActivityStack.java
@@ -82,7 +83,7 @@ ActivityRecord getTopActivity() {
 }
 ```
 
-## 带ActivityInfo.LAUNCH_SINGLE_INSTANCE
+## 带ActivityInfo.LAUNCH_SINGLE_INSTANCE，查找唯一的实例
 
 主要是根据`ActivityInfo`来查找，对于`LAUNCH_SINGLE_INSTANCE`模式的，只会有一个唯一的`ActivityRecord`实例在特定的`TaskRecord`中，匹配包名和Activity类名和UserId
 
@@ -128,5 +129,32 @@ ActivityRecord findActivityLocked(Intent intent, ActivityInfo info) {
     }
 
     return null;
+}
+```
+
+## 另外的一些操作
+
+### topRunningNonDelayedActivityLocked
+
+找到栈顶的`ActivityRecord`，这里的`r != notTop`仅仅是地址的判断
+
+```java
+final ActivityRecord topRunningNonDelayedActivityLocked(ActivityRecord notTop) {
+    for (int taskNdx = mTaskHistory.size() - 1; taskNdx >= 0; --taskNdx) {
+        final TaskRecord task = mTaskHistory.get(taskNdx);
+        final ArrayList<ActivityRecord> activities = task.mActivities;
+        for (int activityNdx = activities.size() - 1; activityNdx >= 0; --activityNdx) {
+            ActivityRecord r = activities.get(activityNdx);
+            if (!r.finishing && !r.delayedResume && r != notTop && okToShow(r)) {
+                return r;
+            }
+        }
+    }
+    return null;
+}
+
+//需要带FLAG_SHOW_ON_LOCK_SCREEN 或者由相同的用户启动
+boolean okToShow(ActivityRecord r) {
+    return r.userId == mCurrentUser || (r.info.flags & ActivityInfo.FLAG_SHOW_ON_LOCK_SCREEN) != 0;
 }
 ```

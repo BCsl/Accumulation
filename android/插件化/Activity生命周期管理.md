@@ -36,7 +36,15 @@ Activity的检测是在AMS我们不能避免，但Activity的创建实际是在C
 
 - 2.Hook掉Instrumentation创建Activity
 
-从Activity的启动过程描述，知道，`ActivityThread`接受到来自AMS的关于`Activity`管理事件的时候，最后都交由`Instrumentation`来处理(`Activity`创建、生命周期回调等)，其中`Instrumentation#newActivity`方法创建一个新的`Activity`后，将与在`ActivityThread#scheduleLaunchActivity`中创建的`ActivityClientRecord`进行关联，最后的关系如下`AMS(ActivityStack)`-`ActivityThread(ActivityClientRecord)`-`Activity`，在后续的生命周期回调的时候就不需要进行额外的操作了，系统帮我们搞定
+![Small](https://github.com/wequick/Small/wiki)
+
+从Activity的启动过程描述，知道，`ActivityThread`接受到来自AMS的关于`Activity`管理事件的时候，最后都交由`Instrumentation`来处理(`Activity`创建、生命周期回调等)，其中`Instrumentation#newActivity`方法创建一个新的`Activity`后（使用插件的ClassLoader来创建），将与在`ActivityThread#scheduleLaunchActivity`中创建的`ActivityClientRecord`进行关联，最后的关系如下`AMS(ActivityStack)`-`ActivityThread(ActivityClientRecord)`-`Activity`，在后续的生命周期回调的时候就不需要进行额外的操作了，系统帮我们搞定（尚不考虑资源加载）
+
+- 3.Hook掉AMS
+
+![DroidPlugin]()
+
+AMS启动一个Activity的时候，具体是`ActivityManagerProxy#startActivity`的时候，把插件`Intent`替换成代理`Intent`，已欺骗AMS，在`ApplicationThread`处理`LAUNCH_ACTIVITY`的消息的时候修改`ActivityClientRecord`的`intent`值，之后具体的`Activity`会根据这个`Intent`来创建的，仅仅这样还不行，还需要把插件包的dex加载到系统的`ClassLoader`，类似于`MultiDex`的方式（尚不考虑资源加载）
 
 ### 参考
 

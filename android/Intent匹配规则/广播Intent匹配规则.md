@@ -1,11 +1,10 @@
-# 广播Intent匹配规则
+# Intent匹配规则
 
-在`AMS`处理发送过来的广播（`Intent`）的时候，需要匹配`Intent`找到匹配的`Receiver`
+在`AMS`处理发送过来的广播（`Intent`）的时候，需要匹配`Intent`找到匹配的`Receiver`，另外的使用场景还有`Pms`对于4大组件中除了`ContentProvider`的查找都需要通过`Intent`匹配来查找，因为这3个主组都可以配置`IntentFilter`，`IntentFilter`作为过滤器，记录的是符合自己要求的Intent的信息，如`Action`，`Scheme`，`MIME`等，一般配合`IntentResolver`这个抽象类来使用，`IntentResolver`有众多的`ArrayMap<String, F[]>`，通过解析注册进来的`IntentFilter`信息保存记录其特定类型的配对关系，如`actionName -> IntentFilter[]`，用于快速的查找合适的`IntentFilter`，如`mActionToFilter`可以根据需要查找的`Intent`的`Action`名快速定位到符合要求的`IntentFilter`，缩小查找规模
 
 ## `IntentFilter`配置
 
 ```java
-
 <intent-filter>
     <action android:name="android.intent.action.VIEW" />
 
@@ -19,19 +18,22 @@
 
    <data android:host="project.example.com" />
 </intent-filter>
-
 ```
-__需要匹配大小写__
+
+**需要匹配大小写**
 
 ### Action
+
 `IntentFilter`可以设置多个`<action/>`标签，但需要注意的是，`Intent`对象只能有一个`Action`
 
 ### Category
+
 `IntentFilter`同样可以设置多个`<category/>`标签，`Intent`对象也可以设置多个`category`
 
 ### Data
 
 #### 语法：
+
 ```java
 <data android:scheme="string"
       android:host="string"
@@ -43,20 +45,24 @@ __需要匹配大小写__
 ```
 
 `Data`稍微有点复杂，有两种模式，`MIME`和`URI`。`MIME`指媒体类型，如`image/jpeg`，可以表示图片、文本、视频等不同的媒体格式，而`URI`中包含的数据比较多了，下面是`URI`的结构：
->`<scheme>://<host>:<port>[<path>|<pathPrefix>|<pathPattern>]`
+
+> `<scheme>://<host>:<port>[<path>|<pathPrefix>|<pathPattern>]`
 
 #### Scheme
+
 `URI`的模式，如`http`,注意而不是`http:`
 
 #### host
+
 `URI`的主机，如果没有`Scheme`,那么就没意义的
 
 #### port
+
 `URI`的端口，如果没有`Scheme`和`host`，那么就没意义
 
 #### path,pathPrefix,pathPattern
-必须以`/`开头。`path`和`pathPattern`都表示完整路径，`pathPattern`可以包含通配符`*`，`.*`，分别代表0个或者多个字符和0到多个字符的任意序列，`pathPrefix`表示路径的前缀信息。
 
+必须以`/`开头。`path`和`pathPattern`都表示完整路径，`pathPattern`可以包含通配符`*`，`.*`，分别代表0个或者多个字符和0到多个字符的任意序列，`pathPrefix`表示路径的前缀信息。
 
 ```java
 //记录了所有注册的MIME类型，如"image/jpeg","image/*", or "{@literal *}/*"
@@ -67,8 +73,12 @@ mBaseTypeToFilter = new ArrayMap<String, F[]>();
 
 //记录了MIME子类型是通配符基本名称，如"image/*"，会记录饿"image"，但如果是"image/jpeg"就不会记录在这里，对于"{@literal *}/*"会记录`*`
 mWildTypeToFilter = new ArrayMap<String, F[]>();
-
 ```
+
+## IntentFilter注册过程
+
+![IntentFilter注册流程](./img/IntentFilter注册流程.png)
+
 ## 匹配代码
 
 先初略过滤部分数据，再详细比较
@@ -86,10 +96,8 @@ IntentResolver.java
       F[] thirdTypeCut = null;
       F[] schemeCut = null;
 
-      // If the intent includes a MIME type, then we want to collect all of
-      // the filters that match that MIME type.
       if (resolvedType != null) {
-          //类似image/jpeg，
+          //指定数据类型，如image/jpeg
           int slashpos = resolvedType.indexOf('/');
           if (slashpos > 0) {
               final String baseType = resolvedType.substring(0, slashpos);
@@ -99,13 +107,10 @@ IntentResolver.java
                       // 匹配类似image/jpeg的data类型，则resolvedType为image/jpeg，baseType为image
                       firstTypeCut = mTypeToFilter.get(resolvedType);
                       secondTypeCut = mWildTypeToFilter.get(baseType);
-
                   } else {
                       // 匹配子类类型为通配符的MIME类型.类似image/*.baseType为image
                       firstTypeCut = mBaseTypeToFilter.get(baseType);
-
                       secondTypeCut = mWildTypeToFilter.get(baseType);
-
                   }
                   // Any */* types always apply, but we only need to do this
                   // if the intent type was not already */*.
@@ -119,17 +124,12 @@ IntentResolver.java
           }
       }
 
-      // If the intent includes a data URI, then we want to collect all of
-      // the filters that match its scheme (we will further refine matches
-      // on the authority and path by directly matching each resulting filter).
       if (scheme != null) {
           schemeCut = mSchemeToFilter.get(scheme);
       }
 
-      // If the intent does not specify any data -- either a MIME type or
-      // a URI -- then we will only be looking for matches against empty
-      // data.
       if (resolvedType == null && scheme == null && intent.getAction() != null) {
+          //没有指定data的情况下，直接查找Action
           firstTypeCut = mActionToFilter.get(intent.getAction());
       }
       //上面只是做了粗鲁的判断，过滤了一部分数据，之后的buildResolveList内会做详细的比较
@@ -155,7 +155,6 @@ IntentResolver.java
 
       return finalList;
   }
-
 ```
 
 包名匹配、再详细匹配
@@ -223,8 +222,7 @@ private void buildResolveList(Intent intent, FastImmutableArraySet<String> categ
 ```java
 IntentFilter.java
 
-public final int match(String action, String type, String scheme,
-        Uri data, Set<String>  , String logTag) {
+public final int match(String action, String type, String scheme, Uri data, Set<String>  , String logTag) {
     //匹配action
     if (action != null && !matchAction(action)) {
         return NO_MATCH_ACTION;
@@ -242,5 +240,4 @@ public final int match(String action, String type, String scheme,
 
     return dataMatch;
 }
-
 ```

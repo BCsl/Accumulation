@@ -830,7 +830,7 @@ private void handleBindApplication(AppBindData data) {
     mCurDefaultDisplayDpi = data.config.densityDpi;
     applyCompatConfiguration(mCurDefaultDisplayDpi);
 
-    data.info = getPackageInfoNoCheck(data.appInfo, data.compatInfo);
+    data.info = getPackageInfoNoCheck(data.appInfo, data.compatInfo); //构造LoadedApk
 
     /**
      * Switch this process to density compatibility mode if needed.
@@ -891,7 +891,7 @@ private void handleBindApplication(AppBindData data) {
      //...
 
   //Instrumentation的初始化,一个应用程序中只有一个Instrumentation对象，每个Activity内部都有一个该对象的引用,初始化完成之后，//帮助管理Activity生命周期的回调
-    if (data.instrumentationName != null) {//true
+    if (data.instrumentationName != null) {//false
         InstrumentationInfo ii = null;
         try {
             ii = appContext.getPackageManager().getInstrumentationInfo(data.instrumentationName, 0);

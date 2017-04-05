@@ -1,6 +1,7 @@
 # Android广播注册
 
 ## Setp1
+
 不管是`Activity`、`Service`上注册广播，最终实现都在`ContextImpl`，最后发送到`ActivityManagerService`处理
 
 ```java
@@ -39,7 +40,9 @@
         }
     }
 ```
+
 ## Step2
+
 注意到，在与`ActivityManagerService`通信之前先构造了一个`IIntentReceiver`对象，这是一个`IPC`机制的服务端对象，有两种方式来保存宿主`ReceiverDispatcher`，强引用或强、弱引用，这里只使用的是弱引用方式
 
 ```java
@@ -118,9 +121,10 @@ static final class ReceiverDispatcher {
 
 
 }
-
 ```
+
 ## Step3
+
 接着就是`ActivityManagerProxy`处理`registerReceiver`方法
 
 ```java
@@ -147,14 +151,13 @@ public Intent registerReceiver(IApplicationThread caller, String packageName,IIn
     data.recycle();
     return intent;
 }
-
 ```
 
 ## Step4
+
 `ActivityManagerService`处理`REGISTER_RECEIVER_TRANSACTION`命令
 
 ```java
-
 case REGISTER_RECEIVER_TRANSACTION:
        {
            data.enforceInterface(IActivityManager.descriptor);
@@ -181,7 +184,6 @@ case REGISTER_RECEIVER_TRANSACTION:
 这里会做权限的检测，把`IIntentReceiver`类型的广播接收器`receiver`保存一个`ReceiverList`列表中，这个列表的宿主进程是`rl.app`，这里就是注册所在的进程了，在`ActivityManagerService`中，用一个进程记录块`ProcessRecord`来表示这个应用程序进程，它里面有一个列表`receivers`，专门用来保存这个进程注册的广播接收器。接着，又把这个`ReceiverList`列表以`receiver`为`Key`值保存在`ActivityManagerService`的成员变量`mRegisteredReceivers`中，这些都是为了方便在收到广播时，快速找到对应的广播接收器的
 
 ```java
-
 public Intent registerReceiver(IApplicationThread caller, String callerPackage,
         IIntentReceiver receiver, IntentFilter filter, String permission, int userId) {
     enforceNotIsolatedCaller("registerReceiver");
@@ -299,7 +301,6 @@ public Intent registerReceiver(IApplicationThread caller, String callerPackage,
         return sticky;
     }
 }
-
 ```
 
 # 取消注册

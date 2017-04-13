@@ -16,7 +16,6 @@ ButterKnife、Dagger2等
 ### 1\. 注解的定义
 
 ```java
-@Retention(CLASS) @Target(FIELD)
 public @interface BindView {
   /** View ID to which the field will be bound. */
   @IdRes int value();

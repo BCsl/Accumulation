@@ -92,7 +92,9 @@ public void destroyItem(ViewGroup container, int position, Object object) {
 }
 ```
 
-看到 `FragmentStatePagerAdapter` 并不刻意保存 `Fragment`，保存的是状态 `mFragmentManager.saveFragmentInstanceState(fragment)`，以便下次初始化的时候恢复，并可以看得出来的是，内存恢复后，查找已经存在的 `Fragment` 是在 `mFragments` 列表中查找的，`mFragments` 又是在 `restoreState` 中恢复的。同 `FragmentPagerAdapter` 一样，一般在初始化之前需要做好已存在的 `Fragment` 实例的恢复操作，且 `add` 操作并没添加 `tag`，`containerViewId` 也是一样，所以不能简单地通过 `mFragmentManager#findFragmentByTag` 和 `mFragmentManager#findFragmentById` 方法来定位，
+看到 `FragmentStatePagerAdapter` 并不刻意保存 `Fragment`，保存的是状态 `mFragmentManager.saveFragmentInstanceState(fragment)`，以便下次初始化的时候恢复，并可以看得出来的是，内存恢复后，查找已经存在的 `Fragment` 是在 `mFragments` 列表中查找的，`mFragments` 又是在 `restoreState` 中恢复的。同 `FragmentPagerAdapter` 一样，一般在初始化之前需要做好已存在的 `Fragment` 实例的恢复操作，且 `add` 操作并没添加 `tag`，`containerViewId` 也是一样，所以不能简单地通过 `mFragmentManager#findFragmentByTag` 和 `mFragmentManager#findFragmentById` 方法来定位
+
+![ FragmentStatePagerAdapter 内存恢复 ](./fragment_adapter_restore.png)
 
 `Fragment` 的恢复操作可以这样：
 

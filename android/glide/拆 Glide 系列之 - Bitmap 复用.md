@@ -26,7 +26,7 @@ Google 官方教程[Managing Bitmap Memory](https://developer.android.com/topic/
 - 4.4 之前，将要解码的图像（无论是资源还是流）必须是 jpeg 或 png 格式且和被复用的 Bitmap 大小一样，其中`BitmapFactory.Options#inSampleSize` 字段必须设置为 1，要求比较严苛
 - 4.4 以后，将要解码的图像的内存需要大于等于要复用的 Bitmap 的内存
 
-![Glide Bitmap 复用模块](./Bitmap 复用.png)
+![Glide Bitmap 复用模块](https://raw.githubusercontent.com/BCsl/Accumulation/master/android/glide/Bitmap%20%E5%A4%8D%E7%94%A8.png)
 
 其中最重要的角色是 `LruPoolStrategy` ，是 Bitmap 内存复用策略的接口，有三个实现类 `SizeConfigStrategy`、`SizeStrategy` 和 `AttributeStrategy`
 
@@ -143,6 +143,8 @@ class GroupedLinkedMap<K extends Poolable, V> {
 }
 ```
 
+### `SizeStrategy`
+
 下面以 `SizeStrategy` 来分析，这是 4.4 以上的复用策略，只要被复用的内存比需要申请的内存小
 
 ```java
@@ -153,6 +155,7 @@ class SizeStrategy implements LruPoolStrategy {
     private static final int MAX_SIZE_MULTIPLE = 8;
     private final KeyPool keyPool = new KeyPool();
     private final GroupedLinkedMap<Key, Bitmap> groupedMap = new GroupedLinkedMap<Key, Bitmap>();
+    // 使用 TreeMap 是为了能够按照 key（这里实际上是 Bitmap 的 size） 的大小进行排序，找到大于或等于目标 Bitmap 内存的复用内存空间
     private final TreeMap<Integer, Integer> sortedSizes = new PrettyPrintTreeMap<Integer, Integer>();
 
     @Override
@@ -213,7 +216,7 @@ class SizeStrategy implements LruPoolStrategy {
     }
     //..
 
-    // Visible for testing.
+    // 对象池，存储以 size 为标识的池对象
     static class KeyPool extends BaseKeyPool<Key> {
 
         public Key get(int size) {
@@ -228,7 +231,7 @@ class SizeStrategy implements LruPoolStrategy {
         }
     }
 
-    // Visible for testing.
+    // 以 size 为标识的池对象
     static final class Key implements Poolable {
         private final KeyPool pool;
         private int size;
@@ -268,7 +271,7 @@ class SizeStrategy implements LruPoolStrategy {
 }
 ```
 
-Bitmap 大小的计算
+### Bitmap 大小的计算
 
 ```java
 /**

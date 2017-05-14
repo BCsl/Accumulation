@@ -2,25 +2,25 @@
 
 ## 前言&效果预览
 
-最近几个周末基本在研究CoordinatorLayout控件和自定义Behavior当中，这期间看了不少这方面的知识，有关于CoordinatorLayout使用的文章，CoordinatorLayout的源码分析文章等等，轻轻松松入门虽然简单，无耐于网上介绍的一些例子实在是太简单，很多东西都是草草带过，尤其是关于NestedScroll效果这方面的，最后发现自己到头来其实还是一头雾水，当然，自己在周末的时候效率的确不高，干扰因素也多。但无意中发现了一篇通过自定义View的方式实现的[仿UC浏览器主页的文章](http://ittiger.cn/2016/05/26/UC%E6%B5%8F%E8%A7%88%E5%99%A8%E9%A6%96%E9%A1%B5%E6%BB%91%E5%8A%A8%E5%8A%A8%E7%94%BB%E5%AE%9E%E7%8E%B0/)（大家也可以看看，对于自定义View也是有帮助的），顿时有了使用自定义Behavior实现这样的效果的想法，而且这种方式在我看来应该会更简单，于是看了很多这方面的源码CoordinatorLayout、NestedScrollView、SwipeDismissBehavior、FloatingActionButton.Behavior、AppBarLayout.Behavior等，也是有所顿悟，于是有了今天的这篇文章。忆当年，自己也曾经在UC浏览器实习过大半年的时间，UC也是自己一直除了QQ从塞班时代至今一直使用的APP了，只怪自己当时有点作死。。。。咳咳，扯多了，还是直接来看效果吧，因为文章比较长，不先放个效果图，估计没多少人能耐心看完（即使放了，估计也没多少能撑着看完，文章特长...要不直接看[代码](https://github.com/BCsl/UcMainPagerDemo)？）
+最近几个周末基本在研究 CoordinatorLayout 控件和自定义 Behavior 当中，这期间看了不少这方面的知识，有关于 CoordinatorLayout 使用的文章，CoordinatorLayout 的源码分析文章等等，轻轻松松入门虽然简单，无耐于网上介绍的一些例子实在是太简单，很多东西都是草草带过，尤其是关于 NestedScroll 效果这方面的，最后发现自己到头来其实还是一头雾水，当然，自己在周末的时候效率的确不高，干扰因素也多。但无意中发现了一篇通过自定义 View 的方式实现的[仿 UC 浏览器主页的文章](http://ittiger.cn/2016/05/26/UC%E6%B5%8F%E8%A7%88%E5%99%A8%E9%A6%96%E9%A1%B5%E6%BB%91%E5%8A%A8%E5%8A%A8%E7%94%BB%E5%AE%9E%E7%8E%B0/)（大家也可以看看，对于自定义 View 也是有帮助的），顿时有了使用自定义 Behavior 实现这样的效果的想法，而且这种方式在我看来应该会更简单， **但重点是这货的解耦功能！！！你使用 `Behavior` 抽象了某个模块的 View 的行为，而不再是依赖于特定的 View ，以后可以随便地替换这部分的 View ，而你只需要为改变的 View 设置好对应的 `Behavior`** ，于是看了很多这方面的源码 CoordinatorLayout、NestedScrollView、SwipeDismissBehavior、FloatingActionButton.Behavior、AppBarLayout.Behavior 等，也是有所顿悟，于是有了今天的这篇文章。忆当年，自己也曾经在 UC 浏览器实习过大半年的时间，UC 也是自己一直除了 QQ 从塞班时代至今一直使用的 APP 了，只怪自己当时有点作死。。。。咳咳，扯多了，还是直接来看效果吧，因为文章比较长，不先放个效果图，估计没多少人能耐心看完（即使放了，估计也没多少能撑着看完，文章特长...要不直接看 [代码](https://github.com/BCsl/UcMainPagerDemo)？）
 
-![NestedScroll2](https://raw.githubusercontent.com/BCsl/GoogleWidget/master/distribution/NestedScroll2.gif)
+![效果图](https://raw.githubusercontent.com/BCsl/GoogleWidget/master/distribution/NestedScroll2.gif)
 
-## 揭开NestedScrolling的原理
+## 揭开 NestedScrolling 的原理
 
-网上不少写文章写到自定义Behavior的实现方式有两种形式，其中一种是实现NestedScrolling效果的，需要关注重写`onStartNestedScroll`和`onNestedPreScroll`等一系列带`Nested`字段的方法，当你一看这样的一个方法`onNestedScroll(CoordinatorLayout coordinatorLayout, V child, View target,int dxConsumed, int dyConsumed, int dxUnconsumed, int dyUnconsumed)`是有多少个参数的时候，你通常会一脸懵逼图，就算你搞懂了这里的每个参数的意思，你还是会有所疑问，这样的一大堆方法是在什么时候调用的，这个时候，你首先需要弄懂的是Android5.0开始提供的支持嵌套滑动效果的机制
+网上不少写文章写到自定义Behavior的实现方式有两种形式，其中一种是实现 NestedScrolling 效果的，需要关注重写 `onStartNestedScroll` 和 `onNestedPreScroll` 等一系列带 `Nested` 字段的方法，当你一看这样的一个方法 `onNestedScroll(CoordinatorLayout coordinatorLayout, V child, View target,int dxConsumed, int dyConsumed, int dxUnconsumed, int dyUnconsumed)` 是有多少个参数的时候，你通常会一脸懵逼，就算你搞懂了这里的每个参数的意思，你还是会有所疑问，这样的一大堆方法是在什么时候调用的，这个时候，你首先需要弄懂的是 Android5.0 开始提供的支持嵌套滑动效果的机制
 
-NestedScrolling提供了一套父View和子View滑动交互机制。要完成这样的交互，父View需要实现`NestedScrollingParent`接口，而子View需要实现`NestedScrollingChild`接口，系统提供的`NestedScrollView`控件就实现了这两个接口，千万不要被这两个接口这么多的方法唬住了，这两个接口都有一个`NestedScrolling[Parent,Children]Helper`辅助类来帮助处理的大部分逻辑，它们之间关系如下
+NestedScrolling 提供了一套父 View 和子 View 滑动交互机制。要完成这样的交互，父 View 需要实现 `NestedScrollingParent` 接口，而子 View 需要实现 `NestedScrollingChild` 接口，系统提供的 `NestedScrollView` 控件就实现了这两个接口，千万不要被这两个接口这么多的方法唬住了，这两个接口都有一个 `NestedScrolling[Parent,Children]Helper` 辅助类来帮助处理的大部分逻辑，它们之间关系如下
 
-![NestedScrolling](https://raw.githubusercontent.com/BCsl/Accumulation/master/android/CoordinaryLayout/img/NestedScrollView.png)
+![NestedScrollView](https://raw.githubusercontent.com/BCsl/Accumulation/master/android/CoordinaryLayout/img/NestedScrollView.png)
 
-### 实现NestedScrollingChild接口
+### 实现 NestedScrollingChild 接口
 
-实际上`NestedScrollingChildHelper`辅助类已经实现好了Child和Parent交互的逻辑。原来的View的处理Touch事件，并实现滑动的逻辑大体上不需要改变。
+实际上 `NestedScrollingChildHelper` 辅助类已经实现好了 Child 和 Parent 交互的逻辑。原来的 View 的处理滑动 事件的逻辑大体上不需要改变。
 
-需要做的就是，如果要准备开始滑动了，需要告诉Parent，Child要准备进入滑动状态了，调用`startNestedScroll()`。Child在滑动之前，先问一下你的Parent是否需要滑动，也就是调用 `dispatchNestedPreScroll()`。如果父类消耗了部分滑动事件，Child需要重新计算一下父类消耗后剩下给Child的滑动距离余量。然后，Child自己进行余下的滑动。最后，如果滑动距离还有剩余，Child就再问一下，Parent是否需要在继续滑动你剩下的距离，也就是调用 `dispatchNestedScroll()`，大概就是这么一回事，当然还还会有和`scroll`类似的`fling`系列方法，但我们这里可以先忽略一下
+需要做的就是，如果要准备开始滑动了，需要告诉 Parent，Child 要准备进入滑动状态了，调用 `startNestedScroll()`。Child 在滑动之前，先问一下你的 Parent 是否需要滑动，也就是调用 `dispatchNestedPreScroll()`。如果父类消耗了部分滑动事件，Child 需要重新计算一下父类消耗后剩下给 Child 的滑动距离余量。然后，Child 自己进行余下的滑动。最后，如果滑动距离还有剩余，Child 就再问一下，Parent 是否需要在继续滑动你剩下的距离，也就是调用 `dispatchNestedScroll()`，大概就是这么一回事，当然还还会有和 `scroll` 类似的 `fling` 系列方法，但我们这里可以先忽略一下
 
-`NestedScrollView`的`NestedScrollingChild`接口实现都是交给辅助类`NestedScrollingChildHelper`来处理的，是否需要进行额外的一些操作要根据实际情况来定
+`NestedScrollView` 的 `NestedScrollingChild` 接口实现都是交给辅助类 `NestedScrollingChildHelper` 来处理的，是否需要进行额外的一些操作要根据实际情况来定
 
 ```java
 // NestedScrollingChild
@@ -42,7 +42,7 @@ public boolean isNestedScrollingEnabled() {
     return mChildHelper.isNestedScrollingEnabled();
 }
 
-//在初始化滚动操作的时候调用，一般在MotionEvent#ACTION_DOWN的时候调用
+//在初始化滚动操作的时候调用，一般在 MotionEvent#ACTION_DOWN 的时候调用
 @Override
 public boolean startNestedScroll(int axes) {
     return mChildHelper.startNestedScroll(axes);
@@ -81,11 +81,11 @@ public boolean dispatchNestedPreFling(float velocityX, float velocityY) {
 }
 ```
 
-实现`NestedScrollingChild`接口挺简单的不是吗？但还需要我们决定什么时候进行调用，和调用那些方法
+实现 `NestedScrollingChild` 接口挺简单的不是吗？但还需要我们决定什么时候进行调用，和调用那些方法
 
-#### startNestedScroll和stopNestedScroll的调用
+#### startNestedScroll 和 stopNestedScroll 的调用
 
-`startNestedScroll`配合`stopNestedScroll`使用，`startNestedScroll`会再接收到`ACTION_DOWN`的时候调用，`stopNestedScroll`会在接收到`ACTION_UP|ACTION_CANCEL`的时候调用，`NestedScrollView`中的伪代码是这样
+`startNestedScroll` 配合 `stopNestedScroll` 使用，`startNestedScroll` 会再接收到 `ACTION_DOWN` 的时候调用，`stopNestedScroll` 会在接收到 `ACTION_UP|ACTION_CANCEL` 的时候调用，`NestedScrollView`中的伪代码是这样
 
 ```java
 onInterceptTouchEvent | onTouchEvent (MotionEvent ev){
@@ -99,7 +99,7 @@ onInterceptTouchEvent | onTouchEvent (MotionEvent ev){
 }
 ```
 
-`NestedScrollingChildHelper`处理`startNestedScroll`方法，可以看出可能会调用Parent的`onStartNestedScroll`和`onNestedScrollAccepted`方法，只要Parent愿意优先处理这次的滑动事件，在结束的时候Parent还会收到`onStopNestedScroll`回调
+`NestedScrollingChildHelper` 处理 `startNestedScroll` 方法，可以看出可能会调用 Parent 的 `onStartNestedScroll` 和 `onNestedScrollAccepted` 方法，只要 Parent 愿意优先处理这次的滑动事件，在结束的时候 Parent 还会收到 `onStopNestedScroll` 回调
 
 ```java
 public boolean startNestedScroll(int axes) {
@@ -133,9 +133,9 @@ public void stopNestedScroll() {
 }
 ```
 
-#### dispatchNestedPreScroll的调用
+#### dispatchNestedPreScroll 的调用
 
-在消费滚动事件之前调用，提供一个让Parent实现联合滚动的机会，因此Parent可以消费一部分或者全部的滑动事件，注意参数`consumed`会记录了Parent所消费掉的事件
+在消费滚动事件之前调用，提供一个让 Parent 实现联合滚动的机会，因此 Parent 可以消费一部分或者全部的滑动事件，注意参数 `consumed` 会记录了 Parent 所消费掉的事件
 
 ```java
 onTouchEvent (MotionEvent ev){
@@ -153,7 +153,7 @@ onTouchEvent (MotionEvent ev){
 }
 ```
 
-`NestedScrollingChildHelper`处理`dispatchNestedPreScroll`方法，会调用到上一步里记录的希望优先处理Scroll事件的Parent的`onNestedPreScroll`方法
+`NestedScrollingChildHelper` 处理 `dispatchNestedPreScroll` 方法，会调用到上一步里记录的希望优先处理 Scroll 事件的 Parent 的 `onNestedPreScroll` 方法
 
 ```java
 public boolean dispatchNestedPreScroll(int dx, int dy, int[] consumed, int[] offsetInWindow) {
@@ -175,9 +175,9 @@ public boolean dispatchNestedPreScroll(int dx, int dy, int[] consumed, int[] off
 }
 ```
 
-#### dispatchNestedScroll的调用
+#### dispatchNestedScroll 的调用
 
-这个方法是在Child自己消费完Scroll事件后调用的
+这个方法是在 Child 自己消费完 Scroll 事件后调用的
 
 ```java
 onTouchEvent (MotionEvent ev){
@@ -196,7 +196,7 @@ onTouchEvent (MotionEvent ev){
 }
 ```
 
-`NestedScrollingChildHelper`处理`dispatchNestedScroll`方法，会调用到上一步里记录的希望优先处理Scroll事件的Parent的`onNestedScroll`方法
+`NestedScrollingChildHelper` 处理 `dispatchNestedScroll` 方法，会调用到上一步里记录的希望优先处理 Scroll 事件的 Parent 的 `onNestedScroll` 方法
 
 ```java
 public boolean dispatchNestedScroll(int dxConsumed, int dyConsumed,
@@ -219,19 +219,19 @@ public boolean dispatchNestedScroll(int dxConsumed, int dyConsumed,
 }
 ```
 
-### 实现NestedScrollingParent接口
+### 实现 NestedScrollingParent 接口
 
-同样，也有一个`NestedScrollingParentHelper`辅助类来帮助Parent实现和Child交互的逻辑。**滑动动作是Child主动发起**，Parent就受滑动回调并作出响应。从上面的Child分析可知，滑动开始的调用`startNestedScroll()`，Parent收到 `onStartNestedScroll()`回调，决定是否需要配合Child一起进行处理滑动，如果需要配合，还会回调`onNestedScrollAccepted()`
+同样，也有一个 `NestedScrollingParentHelper` 辅助类来帮助 Parent 实现和 Child 交互的逻辑。**滑动动作是 Child 主动发起**，Parent 就受滑动回调并作出响应。从上面的 Child 分析可知，滑动开始的调用 `startNestedScroll()`，Parent 收到 `onStartNestedScroll()` 回调，决定是否需要配合 Child 一起进行处理滑动，如果需要配合，还会回调 `onNestedScrollAccepted()`
 
-每次滑动前，Child先询问Parent是否需要滑动，即`dispatchNestedPreScroll()`，这就回调到Parent的`onNestedPreScroll()`，Parent可以在这个回调中消费掉Child的Scroll事件，也就是优先于Child滑动
+每次滑动前，Child 先询问 Parent 是否需要滑动，即 `dispatchNestedPreScroll()` ，这就回调到 Parent 的 `onNestedPreScroll()`，Parent 可以在这个回调中消费掉 Child 的 Scroll 事件，也就是优先于 Child 滑动
 
-Child滑动以后，会调用`dispatchNestedScroll()`，回调到Parent的`onNestedScroll()`，这里就是Child滑动后，剩下的给Parent处理，也就是后于Child滑动
+Child 滑动以后，会调用 `dispatchNestedScroll()` ，回调到 Parent 的 `onNestedScroll()` ，这里就是 Child 滑动后，剩下的给 Parent 处理，也就是后于 Child 滑动
 
-最后，滑动结束Child调用`stopNestedScroll`，回调Parent的`onStopNestedScroll()`表示本次处理结束
+最后，滑动结束 Child 调用 `stopNestedScroll`，回调 Parent 的 `onStopNestedScroll()` 表示本次处理结束
 
-现在我们来看看`NestedScrollingParent`的实现细节，这里以`CoordinatorLayout`来分析而不再是`NestedScrollView`，因为它才是这篇文章的主角
+现在我们来看看 `NestedScrollingParent` 的实现细节，这里以 `CoordinatorLayout` 来分析而不再是 `NestedScrollView` ，因为它才是这篇文章的主角
 
-在这之前，首先简单介绍下`Behavior`这个对象，你可以在XML中定义它就会在`CoordinaryLayout`中解析实例化到目标子View的`LayoutParams`或者获取到`CoordinaryLayout`子View的`LayoutParams`对象通过setter方法注入，如果你自定义的`Behavior`希望实现NestedScroll效果，那么你需要关注重写以下这些方法
+在这之前，首先简单介绍下 `Behavior` 这个对象，你可以在 XML 中定义它就会在 `CoordinaryLayout` 中解析实例化到目标子 View 的 `LayoutParams` 或者获取到 `CoordinaryLayout` 子 View 的 `LayoutParams` 对象通过 setter 方法注入，如果你自定义的 `Behavior` 希望实现 NestedScroll 效果，那么你需要关注重写以下这些方法
 
 - onStartNestedScroll ： boolean
 - onStopNestedScroll ： void
@@ -240,7 +240,7 @@ Child滑动以后，会调用`dispatchNestedScroll()`，回调到Parent的`onNes
 - onNestedFling ： void
 - onNestedPreFling ： void
 
-你会发现以上这些方法对应了`NestedScrollingParent`接口的方法，只是在参数上有所增加，且都会在`CoordiantorLayout`实现`NestedScrollingParent`接口的每个方法中作出相应回调，下面来简单走读下这部分代码
+你会发现以上这些方法对应了 `NestedScrollingParent` 接口的方法，只是在参数上有所增加，且都会在 `CoordiantorLayout` 实现 `NestedScrollingParent` 接口的每个方法中作出相应回调，下面来简单走读下这部分代码
 
 ```java
 public class CoordinatorLayout extends ViewGroup implements NestedScrollingParent {
@@ -436,23 +436,23 @@ private final NestedScrollingParentHelper mNestedScrollingParentHelper = new Nes
 }
 ```
 
-你会发现`CoordiantorLayout`收到来自`NestedScrollingChild`的各种回调后，都是交由需要响应的`Behavior`来处理的，所以这里可以得出一个结论，`CoordiantorLayout`是`Behavior`的一个代理类，所以`Behavior`实际上也是一个`NestedScrollingParent`，另外结合`NestedScrollingChild`实现的部分来看，你很容就能搞懂这些方法参数的实际含义
+你会发现 `CoordiantorLayout` 收到来自 `NestedScrollingChild` 的各种回调后，都是交由需要响应的 `Behavior` 来处理的，所以这里可以得出一个结论，`CoordiantorLayout` 是 `Behavior` 的一个代理类，所以 `Behavior` 实际上也是一个 `NestedScrollingParent` ，另外结合 `NestedScrollingChild` 实现的部分来看，你很容就能搞懂这些方法参数的实际含义
 
-`CoordiantorLayout`,`Behavior`和`NestedScrollingParent`三者关系 ![NestedScroll2](https://raw.githubusercontent.com/BCsl/Accumulation/master/android/CoordinaryLayout/img/NestedScroll2.png)
+`CoordiantorLayout` , `Behavior` 和 `NestedScrollingParent` 三者关系 ![NstesdScroll](https://raw.githubusercontent.com/BCsl/Accumulation/master/android/CoordinaryLayout/img/NestedScroll2.png)
 
-### NestedScroll小结
+### NestedScroll 小结
 
-NestedScroll的机制的简版是这样的，当子View在处理滑动事件之前，先告诉自己的父View是否需要先处理这次滑动事件，父View处理完之后，告诉子View它处理的多少滑动距离，剩下的还是交给子View自己来处理
+NestedScroll 的机制的简版是这样的，当子 View 在处理滑动事件之前，先告诉自己的父 View 是否需要先处理这次滑动事件，父 View 处理完之后，告诉子 View 它处理了多少滑动距离，剩下的还是交给子 View 自己来处理
 
-你也可以实现这样的一套机制，父View拦截所有事件，然后分发给需要的子View来处理，然后剩余的自己来处理。但是这样就做会使得逻辑处理更复杂，因为事件的传递本来就由外先内传递到子View，处理机制是由内向外，由子View先来处理事件本来就是遵守默认规则的，这样更自然且坑更少，不知道自己说得对不对，欢迎打脸(￣ε(#￣)☆╰╮(￣▽￣///)
+你也可以实现这样的一套机制，父 View 拦截所有事件，然后分发给需要的子 View 来处理，然后剩余的自己来处理。但是这样就做会使得逻辑处理更复杂，因为事件的传递本来就由外先内传递到子 View ，处理机制是由内向外，由子 View 先来处理事件本来就是遵守默认规则的，这样更自然且坑更少，不知道自己说得对不对，欢迎打脸(￣ε(#￣)☆╰╮(￣▽￣///)
 
-## CoordinatorLayout的源码走读和如何自定义Behavior
+## CoordinatorLayout 的源码走读和如何自定义 Behavior
 
-上面在分析`NestedScrollingParent`接口的时候已经简单提到了`CoordinatorLayout`这个控件，至于这个控件是用来做什么的？`CoordinatorLayout`内部有个`Behavior`对象，这个`Behavior`对象可以通过外部setter或者在xml中指定的方式注入到`CoordinatorLayout`的某个子View的`LayoutParams`，`Behavior`对象定义了特定类型的视图交互逻辑，譬如`FloatingActionButton`的`Behavior`实现类，只要`FloatingActionButton`是`CoordinatorLayout`的子View，且设置的该`Behavior`（默认已经设置了），那么，这个FAB就会在`Snackbar`出现的时候上浮，而不至于被遮挡，而这种通过定义`Behavior`的方式就可以控制View的某一类的行为，通常会比自定义View的方式更解耦更轻便，由此可知，`Behavior`是`CoordinatorLayout`的精髓所在
+上面在分析 `NestedScrollingParent` 接口的时候已经简单提到了 `CoordinatorLayout` 这个控件，至于这个控件是用来做什么的？`CoordinatorLayout` 内部有个 `Behavior` 对象，这个 `Behavior` 对象可以通过外部 setter 或者在 xml 中指定的方式注入到 `CoordinatorLayout` 的某个子 View 的 `LayoutParams`，`Behavior` 对象定义了特定类型的视图交互逻辑，譬如 `FloatingActionButton` 的 `Behavior` 实现类，只要 `FloatingActionButton` 是 `CoordinatorLayout` 的子View，且设置的该 `Behavior`（默认已经设置了），那么，这个 FAB 就会在 `Snackbar` 出现的时候上浮，而不至于被遮挡，而这种通过定义 `Behavior` 的方式就可以控制 View 的某一类的行为，通常会比自定义 View 的方式更解耦更轻便，由此可知，`Behavior` 是 `CoordinatorLayout` 的精髓所在
 
-### Behavior的解析和实例化
+### Behavior 的解析和实例化
 
-简单来看看`Behavior`是如何从xml中解析的，通过检测`xxx:behavior`属性，通过全限定名或者相对路径的形式指定路径，最后通过反射来新建实例，默认的构造器是`Behavior(Context context, AttributeSet attrs)`,如果你需要配置额外的参数，可以在外部构造好`Behavior`并通过setter的方式注入到`LayoutParams`或者获取到解析好的`Behavior`进行额外的参数设定
+简单来看看 `Behavior` 是如何从 xml 中解析的，通过检测 `xxx:behavior` 属性，通过全限定名或者相对路径的形式指定路径，最后通过反射来新建实例，默认的构造器是 `Behavior(Context context, AttributeSet attrs)` ,如果你需要配置额外的参数，可以在外部构造好 `Behavior` 并通过 setter 的方式注入到 `LayoutParams` 或者获取到解析好的 `Behavior` 进行额外的参数设定
 
 ```java
 LayoutParams(Context context, AttributeSet attrs) {
@@ -498,16 +498,16 @@ static Behavior parseBehavior(Context context, AttributeSet attrs, String name) 
 
 ### 两种关系和两种形式
 
-#### View之间的依赖关系
+#### View 之间的依赖关系
 
-`CoordinatorLayout`的子View可以扮演着不同角色，一种是被依赖的，而另外一种则是主动寻找依赖的View，被依赖的View并不会感知到自己被依赖，被依赖的View也有可能是寻找依赖的View
+`CoordinatorLayout` 的子 View 可以扮演着不同角色，一种是被依赖的，而另外一种则是主动寻找依赖的 View ，被依赖的 View 并不会感知到自己被依赖，被依赖的 View 也有可能是寻找依赖的 View
 
-这种依赖关系的建立由`CoordinatorLayout#LayoutParam`来指定，假设此时有两个View: A 和B，那么有两种情况会导致依赖关系
+这种依赖关系的建立由 `CoordinatorLayout#LayoutParam` 来指定，假设此时有两个 View：A 和 B，那么有两种情况会导致依赖关系
 
-- A的anchor是B
-- A的behavior对B有依赖
+- A 的 anchor 是 B
+- A 的 behavior 对 B 有依赖
 
-`LayoutParams`中关于依赖的判断的依据的代码如下
+`LayoutParams` 中关于依赖的判断的依据的代码如下
 
 ```java
 LayoutParams.class
@@ -517,7 +517,7 @@ boolean dependsOn(CoordinatorLayout parent, View child, View dependency) {
 }
 ```
 
-依赖判断通过两个条件判断，一个生效即可，最容易理解的是根据`Behavior#layoutDependsOn`方法指定，例如FAB依赖`Snackbar`
+依赖判断通过两个条件判断，一个生效即可，最容易理解的是根据 `Behavior#layoutDependsOn` 方法指定，例如 FAB 依赖 `Snackbar`
 
 ```java
 Behavior.java
@@ -528,9 +528,9 @@ public boolean layoutDependsOn(CoordinatorLayout parent, FloatingActionButton ch
 }
 ```
 
-另外一个可以看到是通过`mAnchorDirectChild`来判断，首先要知道AnchorView的ID是通过setter或者xml的anchor属性形式指定，但是为了不需要每次都根据ID通过`findViewById`去解析出AnchorView，所以会使用`mAnchorView`变量缓存好，需要注意的是这个AnchorView不可以是`CoordinatorLayout`，另外也不可以是当前View的一个子View，变量`mAnchorDirectChild`记录的就是AnchorView的所属的`ViewGroup`或自身（当它直接ViewParent是`CoordinatorLayout`的时候），关于AnchorView的作用，也可以在FAB配合`AppBarLayout`使用的时候，`AppBarLayout`会作为FAB的AnchorView，就可以在`AppBarLayout`打开或者收缩状态的时候显示或者隐藏FAB，自己这方面的实践比较少，在这也可以先忽略并不影响后续分析，大家感兴趣的可以通过看相关代码一探究竟
+另外一个可以看到是通过 `mAnchorDirectChild` 来判断，首先要知道 AnchorView 的 ID 是通过 setter 或者 xml 的 anchor 属性形式指定，但是为了不需要每次都根据ID通过 `findViewById` 去解析出 AnchorView，所以会使用 `mAnchorView` 变量缓存好，需要注意的是这个 AnchorView 不可以是 `CoordinatorLayout` ，另外也不可以是当前 View 的一个子 View ，变量 `mAnchorDirectChild` 记录的就是 AnchorView 的所属的`ViewGroup`或自身（当它直接ViewParent是`CoordinatorLayout`的时候），关于 AnchorView的作用，也可以在 FAB 配合`AppBarLayout`使用的时候，`AppBarLayout` 会作为 FAB 的 AnchorView，就可以在 `AppBarLayout` 打开或者收缩状态的时候显示或者隐藏 FAB，自己这方面的实践比较少，在这也可以先忽略并不影响后续分析，大家感兴趣的可以通过看相关代码一探究竟
 
-根据这种依赖关系，`CoordinatorLayout`中维护了一个`mDependencySortedChildren`列表，里面含有所有的子View，按依赖关系排序，被依赖者排在前面，会在每次测量前重新排序，确保处理的顺序是 **被依赖的View会先被measure和layout**
+根据这种依赖关系，`CoordinatorLayout` 中维护了一个 `mDependencySortedChildren` 列表，里面含有所有的子 View，按依赖关系排序，被依赖者排在前面，会在每次测量前重新排序，确保处理的顺序是 **被依赖的 View 会先被 measure 和 layout**
 
 ```java
 final Comparator<View> mLayoutDependencyComparator = new Comparator<View>() {
@@ -549,7 +549,7 @@ final Comparator<View> mLayoutDependencyComparator = new Comparator<View>() {
 };
 ```
 
-`selectionSort`方法使用的就是`mLayoutDependencyComparator`来处理，list参数是所有子View的集合，这里使用了_选择排序法_，递增的方式，所以最后被依赖的View会排在最前
+`selectionSort` 方法使用的就是 `mLayoutDependencyComparator` 来处理，list 参数是所有子 View 的集合，这里使用了_选择排序法_，递增的方式，所以最后被依赖的 View 会排在最前
 
 ```java
 private static void selectionSort(final List<View> list, final Comparator<View> comparator) {
@@ -580,7 +580,7 @@ private static void selectionSort(final List<View> list, final Comparator<View> 
 }
 ```
 
-这里有个疑问？为什么不直接使用`Collections#sort(List<T> list, Comparator<? super T> comparator)`的方式来排序呢？我的想法是考虑到可能会出现这样的一种情况，A依赖B，B依赖C，C依赖A，这时候Comparator比较的时候，A>B，B>C，C>A，这就违背了Comparator所要求的传递性（根据传递性原则，A应该大于C），所以没有使用`sort`方法来排序，不知道自己说得是否正确，有知道的一定要告诉我，经过选择排序的方式的结果是[C，B，A]，所以虽然C依赖A，但也可能先处理了C，这就如果你使用到这样的依赖关系的时候就需要谨慎且注意了，例如你在C处理`onMeasureChild`的时候，你并不能得到C依赖的A的测量结果，因为C先于A处理了
+这里有个疑问？为什么不直接使用 `Collections#sort(List<T> list, Comparator<? super T> comparator)` 的方式来排序呢？我的想法是考虑到可能会出现这样的一种情况，A 依赖 B，B 依赖 C，C 依赖 A，这时候 Comparator 比较的时候，A > B，B > C，C > A，这就违背了 Comparator 所要求的传递性（根据传递性原则，A 应该大于 C ），所以没有使用 `sort` 方法来排序，不知道自己说得是否正确，有知道的一定要告诉我，经过选择排序的方式的结果是 [C，B，A] ，所以虽然 C 依赖 A，但也可能先处理了 C，这就如果你使用到这样的依赖关系的时候就需要谨慎且注意了，例如你在 C 处理 `onMeasureChild` 的时候，你并不能得到 C 依赖的 A 的测量结果，因为 C 先于 A 处理了
 
 #### 依赖的监听
 
@@ -605,7 +605,6 @@ class OnPreDrawListener implements ViewTreeObserver.OnPreDrawListener {
 `dispatchOnDependentViewChanged`方法，会遍历根据依赖关系排序好的子View集合，找到位置改变了的View，并回调依赖这个View的`Behavior`的`onDependentViewChanged`方法
 
 ```java
-
 void dispatchOnDependentViewChanged(final boolean fromNestedScroll) {
     final int layoutDirection = ViewCompat.getLayoutDirection(this);
     final int childCount = mDependencySortedChildren.size();
@@ -685,21 +684,21 @@ void dispatchDependentViewRemoved(View view) {
 }
 ```
 
-### 自定义Behavior的两种目的
+### 自定义 Behavior 的两种目的
 
-我们可以按照两种目的来实现自己的`Behavior`，当然也可以两种都实现啦
+我们可以按照两种目的来实现自己的 `Behavior`，当然也可以两种都实现啦
 
-- 某个view监听另一个view的状态变化，例如大小、位置、显示状态等
+- 某个 view 监听另一个 view 的状态变化，例如大小、位置、显示状态等
 
-- 某个view监听`CoordinatorLayout`内的`NestedScrollingChild`的接口实现类的滑动状态
+- 某个 view 监听 `CoordinatorLayout` 内的 `NestedScrollingChild` 的接口实现类的滑动状态
 
-第一种情况需要重写`layoutDependsOn`和`onDependentViewChanged`方法
+第一种情况需要重写 `layoutDependsOn` 和 `onDependentViewChanged` 方法
 
-第二种情况需要重写`onStartNestedScroll`和`onNestedPreScroll`系列方法（上面已经提到了哦）
+第二种情况需要重写 `onStartNestedScroll` 和 `onNestedPreScroll` 系列方法（上面已经提到了哦）
 
-对于第一种情况，我们之前分析依赖的监听的时候相关回调细节已经说完了，`Behavior`只需要在`onDependentViewChanged`做相应的处理就好
+对于第一种情况，我们之前分析依赖的监听的时候相关回调细节已经说完了，`Behavior` 只需要在 `onDependentViewChanged` 做相应的处理就好
 
-对于第二种情况，我们在NestedScoll的那节也已经把相关回调细节说了
+对于第二种情况，我们在 NestedScoll 的那节也已经把相关回调细节说了
 
 ### CoordinatorLayout的事件传递
 
@@ -777,17 +776,17 @@ private boolean performIntercept(MotionEvent ev, final int type) {
 
 ### 小结
 
-以上，基本可以理清`CoordinatorLayout`的机制，一个View如何监听到依赖View的变化，和`CoordinatorLayout`中的`NestedScrollingChild`实现NestedScroll的机制，触摸事件又是如何被`Behavior`拦截和处理，另外还有测量和布局我在这里并没有提及，但基本就是按照依赖关系排序，遍历子View，询问它们的`Behavior`是否需要处理，大家可以翻翻源码，这样可以有更深刻的体会，有了这些知识，我们基本就可以根据需求来自定义自己的`Behavior`了，下面也带大家来实践下我是如何用自定义`Behavior`实现UC主页的
+以上，基本可以理清 `CoordinatorLayout` 的机制，一个 View 如何监听到依赖 View 的变化，和 `CoordinatorLayout` 中的 `NestedScrollingChild` 实现 NestedScroll 的机制，触摸事件又是如何被 `Behavior` 拦截和处理，另外还有测量和布局我在这里并没有提及，但基本就是按照依赖关系排序，遍历子 View，询问它们的 `Behavior` 是否需要处理，大家可以翻翻源码，这样可以有更深刻的体会，有了这些知识，我们基本就可以根据需求来自定义自己的 `Behavior` 了，下面也带大家来实践下我是如何用自定义 `Behavior` 实现 UC 主页的
 
-## UC主页实现分析
+## UC 主页实现分析
 
-先来看看UC浏览器的主页的效果图
+先来看看 UC 浏览器的主页的效果图
 
 ![UC主页效果](https://raw.githubusercontent.com/BCsl/GoogleWidget/master/distribution/UcMainPager.gif)
 
-可以看到有一共有4种元素的交互，这里分别称为Title元素、Header元素、Tab元素和新闻列表元素
+可以看到有一共有4种元素的交互，这里分别称为 Title 元素、Header 元素、Tab 元素和新闻列表元素
 
-在往上拖动列表页而还没进入到新闻阅读状态的时候，我们需要一个容器来完全消费掉这个拖动事件，避免列表项向上滚动，同时Tab和Title则分别从列表顶部和`CoordinatorLayout`顶部出现，Header也有往上偏移一段距离，而到底谁来扮演这个角色呢？我们需要先确定它们之间的依赖关系
+在往上拖动列表页而还没进入到新闻阅读状态的时候，我们需要一个容器来完全消费掉这个拖动事件，避免列表项向上滚动，同时 Tab 和 Title 则分别从列表顶部和 `CoordinatorLayout` 顶部出现，Header 也有往上偏移一段距离，而到底谁来扮演这个角色呢？我们需要先确定它们之间的依赖关系
 
 ### 确定依赖关系
 
@@ -795,19 +794,18 @@ private boolean performIntercept(MotionEvent ev, final int type) {
 
 ![状态变化](https://raw.githubusercontent.com/BCsl/Accumulation/master/android/CoordinaryLayout/img/translation.png)
 
-根据前后效果的对比图，我们可以使Header作为唯一被依赖的View来处理，列表容器和Tab容器随着Header上移动而上移动，Title随着Header的上移动而下移出现，在这个完整的过程中，我们定义Header一共向上移动了offestHeader的高度，Title向下偏移了Title这个容器的高度，Tab则向上偏移了Tab这个容器 的高度，而列表偏移的高度是[offestHeader - Title容器高度 - Tab容器高度]
+根据前后效果的对比图，我们可以使 Header 作为唯一被依赖的 View 来处理，列表容器和 Tab 容器随着 Header 上移动而上移动，Title 随着 Header 的上移动而下移出现，在这个完整的过程中，我们定义 Header 一共向上移动了 offestHeader 的高度，Title 向下偏移了 Title 这个容器的高度，Tab 则向上偏移了 Tab 这个容器的高度，而列表偏移的高度是 [offestHeader - Title容器高度 - Tab容器高度]
 
-### 实现头部和列表的NestedScroll效果
+### 实现头部和列表的 NestedScroll 效果
 
-首先考虑列表页，因为列表页可以左右切换，所以这里使用ViewPager作为列表页的容器，列表页需要放置在Header之下，且随着Header的上移收缩，列表页也需要上移，在这里我们首先需要解决两个问题
+首先考虑列表页，因为列表页可以左右切换，所以这里使用 ViewPager 作为列表页的容器，列表页需要放置在 Header 之下，且随着 Header 的上移收缩，列表页也需要上移，在这里我们首先需要解决两个问题
 
-- 1.列表页置于Header之下
+- 1.列表页置于 Header 之下
 - 2.列表页上移留白问题
 
-首先来解决第一个问题-列表页置于Header之下，`CoordinatorLayout`继承来自`ViewGroup`，默认的布局行为更像是一个`FrameLayout`，不是`RelativeLayout`所以并不能用`layout_below`等属性来控制它的相对位置，而某些情况下，我们可以给Header的高度设定一个准确值，例如250dip，那么我们的的列表页的marginTop设置为250dip就好了，但是通常，我们的Header高度是不定的，所以我们需要一种能够适配这种变化的方法，所以我能想到的就是重写列表页的layout过程，`Behavior`提供了`onLayoutChild`方法可以让我们实现，很好；接着来思考列表页上移留白问题，这是因为在`CoordinatorLayout`测量布局完成后，记此时列表高度为H，但随着Header上移H2个高度的时候，列表也随着移动一定高度，但是列表高度还是H，效果不言而喻，所以，我们需要在子View测量的时候，添加上列表的最大偏移量[H2 - Title容器高度 - Tab容器高度]，下面来看代码，其实这就和系统`AppBarLayout`下的滚动列表处理一样的，我们会在`AppBarLayout`下放置的View设定一个这样的`app:layout_behavior="@string/appbar_scrolling_view_behavior"`Behavior属性，所以提供已经提供了这样的一个基类来处理了，只不过它是包级私有，需要我们另外copy一份出来，来看看代码吧，继承自同样sdk提供的包级私有的`ViewOffsetBehavior`类，`ViewOffsetBehavior`使用`ViewOffsetHelper`方便对View进行偏移处理，代码不多且功能也没使用到，所以就不贴了，可以自己看
+首先来解决第一个问题-列表页置于 Header 之下，`CoordinatorLayout` 继承来自 `ViewGroup`，默认的布局行为更像是一个 `FrameLayout`，不是 `RelativeLayout` 所以并不能用 `layout_below` 等属性来控制它的相对位置，而某些情况下，我们可以给 Header 的高度设定一个准确值，例如 250dip ，那么我们的的列表页的 marginTop 设置为 250dip 就好了，但是通常，我们的 Header 高度是不定的，所以我们需要一种能够适配这种变化的方法，所以我能想到的就是重写列表页的 layout 过程，`Behavior` 提供了 `onLayoutChild` 方法可以让我们实现，很好；接着来思考列表页上移留白问题，这是因为在 `CoordinatorLayout` 测量布局完成后，记此时列表高度为 H，但随着 Header 上移 H2 个高度的时候，列表也随着移动一定高度，但是列表高度还是 H，效果不言而喻，所以，我们需要在子 View 测量的时候，添加上列表的最大偏移量 [H2 - Title容器高度 - Tab容器高度]，下面来看代码，其实这就和系统 `AppBarLayout` 下的滚动列表处理一样的，我们会在 `AppBarLayout` 下放置的 View 设定一个这样的 `app:layout_behavior="@string/appbar_scrolling_view_behavior" Behavior 属性，所以提供已经提供了这样的一个基类来处理了，只不过它是包级私有，需要我们另外 copy 一份出来，来看看代码吧，继承自同样 sdk 提供的包级私有的`ViewOffsetBehavior`类，`ViewOffsetBehavior`使用`ViewOffsetHelper` 方便对 View 进行偏移处理，代码不多且功能也没使用到，所以就不贴了，可以自己看
 
 ```java
-
 public abstract class HeaderScrollingViewBehavior extends ViewOffsetBehavior<View> {
     private final Rect mTempRect1 = new Rect();
     private final Rect mTempRect2 = new Rect();
@@ -932,12 +930,11 @@ public abstract class HeaderScrollingViewBehavior extends ViewOffsetBehavior<Vie
 }
 ```
 
-这个基类的代码还是很好理解的，因为之前就说过了，正常来说被依赖的View会优先于依赖它的View处理，所以需要依赖的View可以在measure/layout的时候，找到依赖的View并获取到它的测量/布局的信息，这里的处理就是依靠着这种关系来实现的
+这个基类的代码还是很好理解的，因为之前就说过了，正常来说被依赖的 View 会优先于依赖它的 View 处理，所以需要依赖的 View 可以在 measure/layout 的时候，找到依赖的 View 并获取到它的测量/布局的信息，这里的处理就是依靠着这种关系来实现的
 
-我们的实现类，需要重写的除了抽象方法`findFirstDependency`外，还需要重写`getScrollRange`，我们把Header的Id`id_uc_news_header_pager`定义在`ids.xml`资源文件内，方便依赖的判断；至于缩放的高度，根据 **结果图** 得知是`Header高度 - Title高度 - Tab高度`，把Title高度`uc_news_header_title_height`和Tab视图的高度`uc_news_tabs_height`也定义在`dimens.xml`，得出如下代码
+我们的实现类，需要重写的除了抽象方法 `findFirstDependency` 外，还需要重写 `getScrollRange`，我们把 Header 的 Id `id_uc_news_header_pager` 定义在 `ids.xml` 资源文件内，方便依赖的判断；至于缩放的高度，根据 **结果图** 得知是 `Header高度 - Title高度 - Tab高度`，把 Title 高度 `uc_news_header_title_height` 和 Tab 视图的高度 `uc_news_tabs_height` 也定义在 `dimens.xml`，得出如下代码
 
 ```java
-
 public class UcNewsContentBehavior extends HeaderScrollingViewBehavior {
     //省略构造信息
     @Override
@@ -979,12 +976,11 @@ public class UcNewsContentBehavior extends HeaderScrollingViewBehavior {
 }
 ```
 
-好了，列表页初始状态完成了，接着列表页需要根据Header的上移而上移，上移使用`TranslationY`属性来控制即可，在`dimens.xml`中定义好Header的偏移范围值`uc_news_header_pager_offset`，当Header偏移了`uc_news_header_pager_offset`的时候，列表页的向上偏移值应该是`getScrollRange()`方法计算出的结果，那么，在接受到`onDependentViewChanged`的时候，列表页的`TranslationY`计算公式为：header.getTranslationY() / H(uc_news_header_pager_offset) * getScrollRange
+好了，列表页初始状态完成了，接着列表页需要根据 Header 的上移而上移，上移使用 `TranslationY` 属性来控制即可，在 `dimens.xml` 中定义好 Header 的偏移范围值 `uc_news_header_pager_offset` ，当 Header 偏移了 `uc_news_header_pager_offset` 的时候，列表页的向上偏移值应该是 `getScrollRange()` 方法计算出的结果，那么，在接受到 `onDependentViewChanged` 的时候，列表页的 `TranslationY` 计算公式为：header.getTranslationY() / H(uc_news_header_pager_offset) * getScrollRange
 
 列表页的`Behavior`最终代码如下：
 
 ```java
-
 //列表页的Behavior
 public class UcNewsContentBehavior extends HeaderScrollingViewBehavior {
     //...省略构造信息
@@ -1036,9 +1032,9 @@ public class UcNewsContentBehavior extends HeaderScrollingViewBehavior {
 }
 ```
 
-第一个难啃的骨头终于搞定，接着是来自Header的挑战
+第一个难啃的骨头终于搞定，接着是来自 Header 的挑战
 
-Header的滚动事件来源于列表页中的`NestedScrollingChild`，所以Header的`Behavior`需要重写于NestedScroll相关的方法，不仅仅需要拦截Scroll事件还需要拦截Fling事件，通过改变`TranslationY`值来"消费"掉这些事件，另外需要为该`Behavior`定义两种状态，打开和关闭，而如果在滑动中途手指离开（ACTION_UP或者ACTION_CANCEL），需要根据偏移量来判断进入打开还是关闭状态，这里我使用Scroller+Runnalbe来进行动画效果，因为直接使用`ViewPropertyAnimator`得到的结果不太理想，具体可以看代码的注释，就不细讲了
+Header 的滚动事件来源于列表页中的 `NestedScrollingChild`，所以 Header 的 `Behavior` 需要重写于 NestedScroll 相关的方法，不仅仅需要拦截 Scroll 事件还需要拦截 Fling 事件，通过改变 `TranslationY` 值来"消费"掉这些事件，另外需要为该 `Behavior` 定义两种状态，打开和关闭，而如果在滑动中途手指离开（ ACTION_UP 或者 ACTION_CANCEL ），需要根据偏移量来判断进入打开还是关闭状态，这里我使用 Scroller + Runnalbe 来进行动画效果，因为直接使用 `ViewPropertyAnimator` 得到的结果不太理想，具体可以看代码的注释，就不细讲了
 
 ```java
 public class UcNewsHeaderPagerBehavior extends ViewOffsetBehavior {
@@ -1198,11 +1194,11 @@ public class UcNewsHeaderPagerBehavior extends ViewOffsetBehavior {
 }
 ```
 
-### 实现标题视图和Tab视图跟随头部的实时移动
+### 实现标题视图和 Tab 视图跟随头部的实时移动
 
-剩下Title和Tab的Behavior，相对上两个来说是比较简单的，都只需要子在`onDependentViewChanged`方法中，根据Header的变化而改变`TranslationY`值即可
+剩下 Title 和 Tab 的 Behavior ，相对上两个来说是比较简单的，都只需要子在 `onDependentViewChanged` 方法中，根据 Header 的变化而改变 `TranslationY` 值即可
 
-Title的Behavior，为了简单，Title直接设置TopMargin来使得初始状态完全偏移出父容器
+Title 的 Behavior，为了简单，Title 直接设置 TopMargin 来使得初始状态完全偏移出父容器
 
 ```java
 public class UcNewsTitleBehavior extends CoordinatorLayout.Behavior<View> {
@@ -1306,11 +1302,11 @@ public class UcNewsTabBehavior extends HeaderScrollingViewBehavior {
 }
 ```
 
-最后布局代码就贴了，代码已经上传到 **[GITHUB](https://github.com/BCsl/UcMainPagerDemo)** ，可以上去看看且顺便给个star吧
+最后布局代码就贴了，代码已经上传到 **[GITHUB](https://github.com/BCsl/UcMainPagerDemo)** ，可以上去看看且顺便给个 star 吧
 
 ## 写在最后
 
-目前来说，Demo还可以有更进一步的完善，例如在打开模式的情况下，禁止列表页ViewPager的左右滑动，且设置选中的Pager位置为0并列表滚动到第一个位置，每个列表还可以增加下拉刷新功能等...但是这些都和主题`Behavior`无关，所以就不再去实现了
+目前来说，Demo 还可以有更进一步的完善，例如在打开模式的情况下，禁止列表页 ViewPager 的左右滑动，且设置选中的 Pager 位置为 0 并列表滚动到第一个位置，每个列表还可以增加下拉刷新功能等...但是这些都和主题 `Behavior` 无关，所以就不再去实现了
 
 如果你看完了文章且觉得有用，那么我希望你能顺手点个推荐/喜欢/收藏，写一篇用心的技术分享文章的确不容易（能抽这么多时间来写这篇文章，其实主要是因为这几天公寓断网了、网了、了...这一断就一星期,所以也拖延了发布时间）
 

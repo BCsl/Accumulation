@@ -1,15 +1,15 @@
 # ActivityManagerService对不同的launchMode或IntentFlag的处理
 
-当前启动一个Activity，`AMS`会新建该Activity在`AMS`中的实例`ActivityRecord`对象，具体在`ActivityStackSupervisor#startActivityUncheckedLocked`方法处理，对于使用`Intent.FLAG_ACTIVITY_NEW_TASK`、`ActivityInfo.LAUNCH_SINGLE_TASK`和`ActivityInfo.LAUNCH_SINGLE_INSTANCE`，新建之后还需要在其管理的`ActivityStack`中查找是否已经创建过了，如果是，那么对于不同的`launcheMode`或`IntentFlag`进行相应的处理
+当前启动一个 Activity，`AMS` 会新建该 Activity 在 `AMS` 中的实例 `ActivityRecord` 对象，具体在 `ActivityStackSupervisor#startActivityUncheckedLocked` 方法处理，对于使用 `Intent.FLAG_ACTIVITY_NEW_TASK` 、`ActivityInfo.LAUNCH_SINGLE_TASK` 和 `ActivityInfo.LAUNCH_SINGLE_INSTANCE`，新建之后还需要在其管理的 `ActivityStack` 中查找是否已经创建过了，如果是，那么对于不同的 `launcheMode` 或 `IntentFlag` 进行相应的处理
 
 ## 预处理
 
-以下几种情况下，待启动的Intent.FLAG会带上`Intent.FLAG_ACTIVITY_NEW_TASK`，代表可能需要在新的任务栈启动目标`Activity`：
+以下几种情况下，待启动的 Intent.FLAG 会带上 `Intent.FLAG_ACTIVITY_NEW_TASK`，代表可能需要在新的任务栈启动目标 `Activity`：
 
-- （1）`sourceRecord=null`说明要启动的`Activity`并不是由一个`Activity`的`Context`启动的，这时候我们总是启动一个新的`TASK`
-- （2）`Launcher`是`SingleInstance`模式（或者说启动新的`Activity`的源`Activity`的`launchMode`为`SingleInstance`）,因为`SingleInstance`模式的`Activity`不希望和你分享同一个`TaskRecord`
-- （3）需要启动的`Activity`的`launchMode == ActivityInfo.LAUNCH_SINGLE_INSTANCE|| r.launchMode ==ActivityInfo.LAUNCH_SINGLE_TASK`，因为表明了自己希望在新的`TaskRecord`中启动
-- （4）`sourceRecord`正在`finish`
+- （1）`sourceRecord=null` 说明要启动的 `Activity` 并不是由一个 `Activity` 的 `Context` 启动的，这时候我们总是启动一个新的 `TASK`
+- （2）`Launcher` 是 `SingleInstance` 模式（或者说启动新的 `Activity` 的源 `Activity` 的 `launchMode` 为 `SingleInstance`）,因为 `SingleInstance` 模式的 `Activity` 不希望和你分享同一个 `TaskRecord`
+- （3）需要启动的 `Activity` 的 `launchMode == ActivityInfo.LAUNCH_SINGLE_INSTANCE|| r.launchMode ==ActivityInfo.LAUNCH_SINGLE_TASK`，因为表明了自己希望在新的 `TaskRecord` 中启动
+- （4）`sourceRecord` 正在 `finish`
 
 代码
 
@@ -51,19 +51,19 @@ if (sourceRecord != null) {
 
 这里代码还是有点多，很难各种情况去考虑，可以考虑分情况分析，例子如下：
 
-- 1.当前任务栈A、B、C，C启动B，B使用`SingleTask`，B不指定`affinity`值
-- 2.当前任务栈A和任务栈B,C，A启动C，C使用`SingleTask`，B，C指定`affinity`值，（`TaskRecord`置前台）返回操作，主要模拟下图
+- 1 . 当前任务栈 A、B、C，C 启动 B，B 使用 `SingleTask` ，B 不指定 `affinity` 值
+- 2 . 当前任务栈 A 和任务栈 B,C，A 启动 C，C 使用 `SingleTask`，B，C 指定 `affinity` 值，（ `TaskRecord` 置前台）返回操作，主要模拟下图
 
 ![SingleTask所在栈置前台](http://img.my.csdn.net/uploads/201108/23/0_13141106978dkE.gif)
 
-- 3.当前任务栈A，A启动B，B使用`SingleInstance`
-- 4.接着3，B启动B（B的TaskRecord不置前）
+- 3 . 当前任务栈 A，A 启动 B，B 使用 `SingleInstance`
+- 4 . 接着 3，B 启动 B（ B 的 TaskRecord 不置前）
 
 ### 例子分析
 
 #### 例子1
 
-这个就不模拟了，结果明显的是，C出栈，B显示
+这个就不模拟了，结果明显的是，C 出栈，B 显示
 
 #### 例子2
 
@@ -174,7 +174,7 @@ if (((launchFlags&Intent.FLAG_ACTIVITY_NEW_TASK) != 0 && (launchFlags&Intent.FLA
 
 #### 例子3
 
-当前任务栈A，A启动B，B使用`SingleInstance`，会自动带上`Intent.FLAG_ACTIVITY_NEW_TASK`
+当前任务栈 A，A 启动 B，B 使用 `SingleInstance` ，会自动带上 `Intent.FLAG_ACTIVITY_NEW_TASK`
 
 ```java
 final int startActivityUncheckedLocked(ActivityRecord r,ActivityRecord sourceRecord, int startFlags, boolean doResume, Bundle options){
@@ -250,11 +250,11 @@ if (((launchFlags&Intent.FLAG_ACTIVITY_NEW_TASK) != 0 && (launchFlags&Intent.FLA
 }
 ```
 
-结论，使用`SingleInstance`启动的Activity，会查找全局唯一的`ActivityRecord`实例，不会和其他Activity共享`TaskRecord`
+结论，使用 `SingleInstance` 启动的 Activity，会查找全局唯一的 `ActivityRecord` 实例，不会和其他 Activity 共享 `TaskRecord`
 
 #### 例子4
 
-接着3，B启动B，或者B启动A，A再启动B
+接着 3，B 启动 B，或者 B 启动 A，A 再启动 B
 
 ```java
 //ActivityStackSupervisor
@@ -347,17 +347,17 @@ if (((launchFlags&Intent.FLAG_ACTIVITY_NEW_TASK) != 0 && (launchFlags&Intent.FLA
 //...
 ```
 
-结论，SingleInstance模式只能和`Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_CLEAR_TASK`搭配使用，其他的`IntentFlag`会无效，如果和`Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_CLEAR_TASK`搭配使用，栈内所有`Activity`都会被清掉，且finish，所以需要重新启动Activity了`onCreate-onStart-onResume`，但是`TaskRecord`可以复用，不过不使用，走的流程将是`onNewIntent-onStart(视情况，有没有走onStop)-onResume`，且注意到当前任务栈并没有置为前台
+结论，SingleInstance 模式只能和 `Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_CLEAR_TASK` 搭配使用，其他的 `IntentFlag` 会无效，如果和 `Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_CLEAR_TASK` 搭配使用，栈内所有 `Activity` 都会被清掉，且 finish，所以需要重新启动 Activity 的 `onCreate-onStart-onResume`，但是 `TaskRecord` 可以复用，如果不使用，走的流程将是 `onNewIntent-onStart(视情况，有没有走onStop)-onResume`，且注意到当前任务栈并没有置为前台
 
 ## 小结
 
-默认模式：不带`Intent.FLAG_ACTIVITY_NEW_TASK`情况下，即使指定`taskAffinity`，但由哪个`TaskRecord`栈的`Activity`启动，就会存放在哪个`TaskRecord`，且可以启动多个实例，如果指定`Intent.FLAG_ACTIVITY_NEW_TASK`，那么就在包名或者指定的`taskAffinity`中启动
+默认模式：不带 `Intent.FLAG_ACTIVITY_NEW_TASK` 情况下，即使指定 `taskAffinity`，但由哪个 `TaskRecord` 栈的 `Activity` 启动，就会存放在哪个 `TaskRecord`，且可以启动多个实例，如果指定 `Intent.FLAG_ACTIVITY_NEW_TASK`，那么就在包名或者指定的 `taskAffinity` 中启动
 
 `Intent.FLAG_ACTIVITY_CLEAR_TASK`:`SingleTask`和`SingleInstance`都可以默认带`Intent.FLAG_ACTIVITY_NEW_TASK`，如果再指定`Intent.FLAG_ACTIVITY_CLEAR_TASK`，且实例已经存在了，启动该`Activity`，重走`onCreate`流程
 
-`SingleTask`:它并不像官方文档描述的一样：`The system creates a new task and instantiates the activity at the root of the new task`，而是在跟它有相同`affinity`的任务中启动(默认为包名)，并且位于这个任务的堆栈顶端，并把它之上的`Activity`全部出栈并finish；如果前台`TaskRecord`的`Activity`启动后台`TaskRecord`的使用的`SingleTask`的`Activity`，如果后台任务栈中已经有该`Activity`，当前的`TaskRecord`会置前；只要实例已经存在了，启动该`Activity`，且没带`Intent.FLAG_ACTIVITY_NEW_TASK`，会触发`onNewIntent`回调
+`SingleTask` : 它并不像官方文档描述的一样：`The system creates a new task and instantiates the activity at the root of the new task`，而是在跟它有相同 `affinity` 的任务中启动(默认为包名)，并且位于这个任务的堆栈顶端，并把它之上的 `Activity` 全部出栈并 finish；如果前台 `TaskRecord` 的 `Activity` 启动后台 `TaskRecord` 的使用的 `SingleTask` 的 `Activity`，如果后台任务栈中已经有该 `Activity`，其所在的 `TaskRecord` 会置前；只要实例已经存在了，启动该 `Activity`，且没带 `Intent.FLAG_ACTIVITY_NEW_TASK`，会触发 `onNewIntent` 回调
 
-`SingleInstance`：全局单实例，不和别的Activity分享TaskRecord，可以搭配`Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_CLEAR_TASK`使用；如果前台`Activity`启动后台任务的使用的`SingleInstance`的`Activity`，如果后台任务栈中已经有该`Activity`，并不像`singleTask`一样会改变当前栈的前后顺序，会触发`onNewIntent`回调；只要实例已经存在了，启动该`Activity`，且没带`Intent.FLAG_ACTIVITY_NEW_TASK`，会触发`onNewIntent`回调
+`SingleInstance`：全局单实例，不和别的 Activity 分享 TaskRecord，可以搭配 `Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_CLEAR_TASK` 使用；如果前台 `Activity` 启动后台任务的使用的 `SingleInstance` 的 `Activity`，如果后台任务栈中已经有该 `Activity`，并不像 `singleTask` 一样会改变当前栈的前后顺序（因为自己独享，不用考虑栈底下其他 Activity），会触发 `onNewIntent` 回调；只要实例已经存在了，启动该`Activity`，且没带 `Intent.FLAG_ACTIVITY_NEW_TASK`，会触发 `onNewIntent` 回调。适用场景：可以在应用外弹出 Dialog 样式的 Activity 的时候使用或全屏 Activity 广告
 
 ## 更多
 

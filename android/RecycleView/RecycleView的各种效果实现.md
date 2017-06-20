@@ -181,7 +181,7 @@ private List<Section> findSections() {
 
 需要注意的是Section的排序和Section的位置还需要根据其前面出现的Section数目进行调整（如一个Section1的初步插入位置为10,但在这个Scetion1之前还有一个Section0，初步插入位置为0，那么Section1调整后的位置应该为11，Section0也还是0），另外普通的Item的位置也要进行必要的处理（如Item属于第二个Section，最终位置为10，真实位置为10-2 = 8）
 
-### StickHeader
+### [StickHeader](https://github.com/Gavin-ZYX/StickyDecoration/blob/master/stickyDecoration/src/main/java/com/gavin/com/library/StickyDecoration.java)
 
 通过`ItemDecoration`来实现
 

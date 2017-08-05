@@ -4,7 +4,7 @@
 
 ## JSX
 
-`JSX` 是 `JS` 的一种扩展，为了把 `HTML` 模板直接嵌入到 `JS` 代码里面，这样就做到了模板和组件关联
+`JSX` 是 `JS` 的一种扩展，为了把 `HTML` 模板直接嵌入到 `JS` 代码里面，这样就做到了模板和组件关联，[深入 JSX](https://discountry.github.io/react/docs/jsx-in-depth.html)
 
 ### 内嵌表达式
 
@@ -123,6 +123,46 @@ ReactDOM.render(
   element,
   document.getElementById('root')
 );
+```
+
+### 使用 React.PropTypes 对组件属性进行类型检测
+
+> 注意: React.PropTypes 自 React v15.5 起已弃用。请使用 [prop-types](https://www.npmjs.com/package/prop-types) 库代替
+
+`React.PropTypes` 返回的是一系列验证函数，用于确保接收的数据类似是否是有效的
+
+```javascript
+
+class Greeting extends React.Component {
+    render() {
+        return (
+            <h1>Hello {this.props.name}</h1>
+        )
+    };
+}
+Greeting.propTypes = {
+    name: React.PropTypes.string.isRequired
+};
+```
+
+上面例子，使用 `React.PropTypes.string.isRequire` 检测 `name` 是否为字符串，并且是必填的
+
+更多的属性
+
+### 设置默认的属性
+
+```javascript
+
+class Greeting extends React.Component {
+    render() {
+        return <h1>hello {this.props.name}</h1>;
+    };
+}
+
+// 如果name没有传值，则会将name设置为默认的zhangyatao
+Greeting.defaultProps = {
+    name: 'HelloWorld'
+}
 ```
 
 ## React组件的状态和生命周期

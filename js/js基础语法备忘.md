@@ -45,7 +45,7 @@
 
 - **闭包**，高阶函数除了可以接受函数作为参数外，还可以把**函数作为结果值返回**，返回闭包时牢记的一点就是：**返回函数不要引用任何循环变量，或者后续会发生变化的变量**,[深入理解javascript原型和闭包](http://www.cnblogs.com/wangfupeng1988/p/3977924.html)
 
-- `this` 关键字，和 JAVA 一样指向调用的对象。但 JS 设计上的错误，JS 的**函数内部**如果调用了 this，this 的指向就要事情况而定，`strict` 模式下，ECMA 规定指向 `undefined`，关于如何控制 `this` 的指向，可以使用 `apply`，[Function.prototype.bind](http://blog.csdn.net/alex8046/article/details/51909744)
+- `this` 关键字，和 JAVA 一样指向调用的对象。但 JS 设计上的错误，JS 的**函数内部**如果调用了 this，this 的指向就要事情况而定，`strict` 模式下，ECMA 规定指向 `undefined`，关于如何控制 `this` 的指向，可以使用 `apply`，[加深对 JavaScript This 的理解](https://juejin.im/post/596a28f6f265da6c360a2716?utm_source=gold_browser_extension)
 
 - 箭头函数，ES6标准，箭头函数相当于匿名函数，并且简化了函数定义，实际上有点像JAVA的lambda表达式，且修复了this的指向问题
 

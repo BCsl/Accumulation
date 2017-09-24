@@ -104,3 +104,4 @@ console.log('next');
 # 更多
 
 - [ECMAScript6 - Promise对象](http://es6.ruanyifeng.com/#docs/promise)
+- [剖析 Promise 内部结构](https://github.com/xieranmaya/blog/issues/3)

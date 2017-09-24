@@ -1,4 +1,4 @@
-# 使用 Redux 进行 ReactNative 开发
+# 使用 Redux 进行 ReactNative 开发一
 
 安装
 
@@ -182,17 +182,8 @@ componentWillUnmount() {
 }
 ```
 
-## Redux 和 React 的结合
-
-需要安装 `react-redux`，并且最好了解容器组件和展示组件的区别，一般来说展示组件只专注于视图的展示，数据源来自 `props` 且不应该依赖 Redux，而容器组件则是专注如何运行（数据获取和状态更新），可以依赖 Redux 并监听 Redux 的状态
-
-技术上讲，容器组件就是使用 `store.subscribe()` 从 Redux `state` 树中读取部分数据，并通过 `props` 来把这些数据提供给要渲染的组件。你可以手工来开发容器组件，但建议使用 `react-redux` 库的 `connect()` 方法来生成，这个方法做了性能优化来避免很多不必要的重复渲染
-
-具体的结合方式还是看 [搭配React](http://cn.redux.js.org/docs/basics/UsageWithReact.html) 比较清晰
-
 # 更多
 
 - [Redux 中文文档](http://cn.redux.js.org/index.html)
 - [解析 Redux 源码](https://zhuanlan.zhihu.com/p/22809799)
-- [容器组件和展示组件相分离](https://medium.com/@dan_abramov/smart-and-dumb-components-7ca2f9a7c7d0)
 - [探究redux源码-衍生-中间件思想](https://github.com/sunyongjian/blog/issues/21)

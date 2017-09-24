@@ -4,7 +4,15 @@
 
 - 不区分整数和浮点数，其中 `NaN` 表示 Not a Number，`Infinity` 代表无限大
 
-- 比较运算，`===` 比较不会自动转换数据类型，浮点数比较，`1 / 3 === (1 - 2 / 3); // false`，只能计算它们之差的绝对值，看是否小于某个阈值，null、undefined、0、NaN 和空字符串 '' 视为 false
+- 比较运算，`===` 比较不会自动转换数据类型，使用 `==` 会转换类型，导致问题
+
+  ```javascript
+  var a = 1;    
+  var b = true;    
+  console.log(a == b);//true
+  ```
+
+  浮点数比较，`1 / 3 === (1 - 2 / 3); // false`，只能计算它们之差的绝对值，看是否小于某个阈值，null、undefined、0、NaN 和空字符串 '' 视为 false
 
 - null 和 undefined ，null 和 JAVA 的 null 差不多，`undefined` 表示值未定义，`undefined` 仅仅在判断函数参数是否传递的情况下有用，两者的区分也没意义，大多数的时候使用 null 即可
 
@@ -45,7 +53,7 @@
 
 - **闭包**，高阶函数除了可以接受函数作为参数外，还可以把**函数作为结果值返回**，返回闭包时牢记的一点就是：**返回函数不要引用任何循环变量，或者后续会发生变化的变量**,[深入理解javascript原型和闭包](http://www.cnblogs.com/wangfupeng1988/p/3977924.html)
 
-- `this` 关键字，和 JAVA 一样指向调用的对象。但 JS 设计上的错误，JS 的**函数内部**如果调用了 this，this 的指向就要事情况而定，`strict` 模式下，ECMA 规定指向 `undefined`，关于如何控制 `this` 的指向，可以使用 `apply`，[加深对 JavaScript This 的理解](https://juejin.im/post/596a28f6f265da6c360a2716?utm_source=gold_browser_extension)
+- `this` 关键字，和 JAVA 一样 **指向调用的对象**。但 JS 设计上的错误，JS 的**函数内部**如果调用了 this，this 的指向就要事情况而定，`strict` 模式下，ECMA 规定指向 `undefined`，关于如何控制 `this` 的指向，可以使用 `apply|call|bind` 这几个方法，[加深对 JavaScript This 的理解](https://juejin.im/post/596a28f6f265da6c360a2716?utm_source=gold_browser_extension)
 
 - 箭头函数，ES6标准，箭头函数相当于匿名函数，并且简化了函数定义，实际上有点像JAVA的lambda表达式，且修复了this的指向问题
 
@@ -60,3 +68,5 @@
 - [廖雪峰的JS教程](http://www.liaoxuefeng.com/wiki/001434446689867b27157e896e74d51a89c25cc8b43bdb3000)
 
 - [JS代码风格](https://github.com/sivan/javascript-style-guide/blob/master/es5/README.md#types)
+
+- [What the f*ck JavaScript?](https://github.com/denysdovhan/wtfjs#readme)

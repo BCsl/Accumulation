@@ -1,12 +1,14 @@
 # ReactNative控件 - Navigator
 
-从0.44版本开始 `react-native` 包下的 `Navigator` 已经被剥离了，如果需要继续使用，如下方式来引用
+从 0.44 版本开始 `react-native` 包下的 `Navigator` 已经不推荐使用
 
-安装 `npm i -S react-native-deprecated-custom-components`
+目前推荐的是 [`react-navigation`](https://reactnavigation.org/docs/navigators/) 这个库
 
-导入 `import { Navigator } from 'react-native-deprecated-custom-components'`
+[Demo](https://github.com/react-community/react-navigation/blob/master/examples/NavigationPlayground/js/)
 
-目前比较主流的应该是 [`react-navigation`](https://reactnavigation.org/docs/navigators/) 这个库，所以后续也只使用这个库好了
+安装
+
+`npm install --save react-navigation`
 
 内置的几种导航栏，可以嵌套使用
 
@@ -18,17 +20,19 @@
 
 ### [`StackNavigator`](https://reactnavigation.org/docs/navigators/stack)
 
+导入 `import { StackNavigator } from 'react-navigation';`
+
 API `StackNavigator(RouteConfigs, StackNavigatorConfig)`
 
 - `RouteConfigs`
 
-路线名：路线配置的映射对象，路线配置信息格式如下
+组件标识名：路线配置的映射对象，路线配置信息格式如下
 
 ```javascript
 StackNavigator({
-  // For each screen that you can navigate to, create a new entry like this:
+  // 定义一个以 Profile 为标志的路由配置，对应的 Screen 如下定义为 ProfileScreen
   Profile: {
-    // `ProfileScreen` is a React component that will be the main content of the screen.
+    // 需要渲染的组件
     screen: ProfileScreen,
     // Optional: When deep linking or using react-navigation in a web app, this path is used:
     // The action and route params are extracted from the path.
@@ -37,7 +41,9 @@ StackNavigator({
     navigationOptions: ({navigation}) => ({
       title: `${navigation.state.params.name}'s Profile'`,
     }),
-  },{
+  },
+  ...MyOtherRoutes,
+  ,{
     initialRouteName: 'Home', // 默认显示界面
     initialRouteParams : {...},  //默认的路由参数，可以通过 this.props.navigation.state.params 访问
     //设置默认的 navigationOptions，可以被 RouteConfigs 上的或者组件内 static navigationOptions 覆盖
@@ -57,9 +63,20 @@ StackNavigator({
 });
 ```
 
-`screen` 指定了要跳转的组件，记得 `import`，`path` 和 `navigationOptions` 可选，其中 `navigationOptions` 中可以配置的信息比较多，如标题、自定义 `Header` 的信息，看官方文档描述
+`screen` 指定了要跳转的组件，记得 `import`，`path` 和 `navigationOptions` 可选，其中 `navigationOptions` 中可以在 `RouteConfigs` 和 `StackNavigatorConfig` 中配置，一个是配置于特定的 Screen，另外一个则是通用的，可以配置的信息比较多，如标题、自定义 `Header` 的信息，看官方文档描述，另外 `navigationOptions` 还可以如形式配置
+
+```javascript
+class XXX extends Component {
+  // Nav options can be defined as a function of the screen's props:
+  static navigationOptions = ({navigation}) => ({
+      herder: toolbar(),
+    });
+}
+```
 
 ### [`TabNavigator`](https://reactnavigation.org/docs/navigators/tab)
+
+导入 `import { TabNavigator } from "react-navigation";`
 
 带 `Tab` 分类，类似 `TabLayout`
 
@@ -120,6 +137,8 @@ const Tabs = TabNavigator({
 
 ### [`DrawerNavigator`](https://reactnavigation.org/docs/navigators/drawer)
 
+导入 `import {DrawerNavigator} from 'react-navigation';`
+
 抽屉样式
 
 API `DrawerNavigator(RouteConfigs, DrawerNavigatorConfig)`
@@ -168,11 +187,13 @@ const SimpleDrawer  = DrawerNavigator(
 );
 ```
 
-## Navigation 参数
+## Navigation 的可用属性
 
-使用 `Navigator` 的每一个界面都会得到一个 `navigation` 属性，可以通过 `this.props.navigation` 来访问，包含着以下一些属性
+使用 `Navigator` 整合后的每一个 Screen（可能是用户定义的组件也可能是嵌套使用的 Navigator） 都会得到一个 `navigation` 属性，可以通过 `this.props.navigation` 来访问，包含着以下一些属性
 
-- `navigate`，用来导航到另外一个界面
+![Navigation](./img/Navigation.png)
+
+- `navigate` 方法，可以用来跳转到其他界面
 
   可以接受三个参数 `navigate(routeName, params, action)` ，分别是组件注册到 `Navigator` 的名字，传递到下一个界面的参数对象，`action` 如果该界面是一个 `navigator` 的话，将运行这个 `action`
 
@@ -201,7 +222,7 @@ const SimpleDrawer  = DrawerNavigator(
 
   ```javascript
   {
-  //注册到 router 中的名字
+  //当前组件注册到 Navigator 的 RouteConfigs 中对应的名字
   routeName: 'profile',
   //a unique identifier used to sort routes
   key: 'main0',
@@ -212,7 +233,7 @@ const SimpleDrawer  = DrawerNavigator(
 
 - `setParams`，用来修改路由中的参数
 
-  修改 `state` 中的 `params`
+  修改 `state` 中的 `params`，从而刷新界面
 
 - `goBack`，用来帮助进行页面返回
 
@@ -220,37 +241,17 @@ const SimpleDrawer  = DrawerNavigator(
 
 - `dispatch`，分发 `action` 到路由，支持以下类型
 
-  - `Navigate`
-
-    导航到页面的 `action`
-
-    ```javascript
-
-    import { NavigationActions } from 'react-navigation'
-    const navigationAction = NavigationActions.navigate({
-    routeName: 'Profile',
-    params: {},
-    action: NavigationActions.navigate({ routeName: 'SubProfileRoute'})})
-    this.props.navigation.dispatch(navigationAction)
-    ```
-
-  - `Reset`
-
-  - `Back`
-
-  - `Set Params`
-
-  - `Init`
+  `Navigate`、`Reset`、`Back`、`Set Params`、`Init`
 
 **需要注意的是**：如果界面组件是一个 `Navigator`，如 `TabNavigator`，可以只有 `state` 和 `dispatch` 两个属性，[详细描述](https://reactnavigation.org/docs/navigators/navigation-prop)
 
 ## Navigation Actions
 
-`navigation.dispatch()` 方法接收一个 `Action` 对象，有以下 5 种 `Action` 对象
+`navigation.dispatch()` 方法接收一个 `Action` 对象，有以下 5 种类型 `Action` 对象
 
 - Navigate
 
-这个 `Action` 用来执行跳转
+这个 `Action` 用来执行跳转，和 `navigate` 方法的作用一样
 
 ```javascript
 
@@ -267,15 +268,47 @@ this.props.navigation.dispatch(navigateAction)
 
 - Reset
 
-  `Reset` 操作会清除原来的路由记录，添加上新设置的路由信息
+  `Reset` 操作会清除原来的路由状态，并设置为特定的状态，由 `index` 和 `actions` 数组组成
+
+```javascript
+import { NavigationActions } from 'react-navigation'
+const resetAction = NavigationActions.reset({
+  index: 1, //指定当前的路由，重设为当前页面为 Setting，并在 Profile 页面之上，后退展示 Profile 页面
+  actions: [
+    NavigationActions.navigate({ routeName: 'Profile'}),
+    NavigationActions.navigate({ routeName: 'Settings'})
+  ]
+})
+this.props.navigation.dispatch(resetAction)
+```
 
 - Back
 
-  回退到上一个界面
+和 `goBack` 方法一样，接受一个 `key` 参数
+
+```javascript
+import { NavigationActions } from 'react-navigation'
+
+const backAction = NavigationActions.back({
+  key: 'Profile'
+})
+this.props.navigation.dispatch(backAction)
+```
 
 - SetParams
 
-  更新参数，该参数必须是已经存在于 `router`的 `param` 中
+更新参数，该参数必须是已经存在于 `router` 的 `param` 中
+
+```javascript
+
+import { NavigationActions } from 'react-navigation'
+
+const setParamsAction = NavigationActions.setParams({
+  params: { title: 'Hello' },
+  key: 'screen-123',
+})
+this.props.navigation.dispatch(setParamsAction)
+```
 
 - Init
 
@@ -283,9 +316,9 @@ this.props.navigation.dispatch(navigateAction)
 
 ## navigationOptions 的配置
 
-之前介绍各种导航的时候的时候，已经提到怎么在路由/导航器中配置 `navigationOptions` 这个参数，但还可以在指定的界面上来配置
+`StackNavigator` 介绍的时候，已经提到可以在 `navigator` 和展示组件上配置 `navigationOptions` 参数了，且在不同的地方配置的一样，展示组件上配置的 `navigationOptions` 会覆盖配置在 `navigator` 的设置
 
-在具体的界面上有两种方式来配置 `navigationOptions`
+在展示组件上有两种方式来配置 `navigationOptions`
 
 - 1.静态配置
 
@@ -302,10 +335,10 @@ class MyScreen extends React.Component {
 
 选项可以是一个接受 `props` 参数的函数，并返回 `navigationOptions` 对象，该对象将覆盖路由/导航器中定义的 `navigationOptions`
 
-`props` 对象中有以下属性
+这里说的 `props` 对象就是组件也会收到的 `props` 对象
 
-- `navigation`
-- `screenProps`
+- `navigation`，前面已经提到
+- `screenProps`，之前的 `navigator` 传递过来的
 - `navigationOptions`
 
 ```javascript
@@ -319,9 +352,13 @@ class ProfileScreen extends React.Component {
 }
 ```
 
-## 自定义导航栏
+## 和 Redux 整合的问题
+
+自己在多种 navigator 嵌套使用（StackNavigator 嵌套 TabNavigator）出现 `Cannot read property undefined of undefined（TabRouter.js）` 和 `Cannot read property 'index' of undefined (Transitioner.js` 这类型错误，Github 上也有不少相关的问 [issues1744](https://github.com/react-community/react-navigation/issues/1744) [issues1919](https://github.com/react-community/react-navigation/issues/1919)，主要是官方给的例子都太简单太简陋了，只用了一个 StackNavigator ，太坑爹了，都是因为没有正确整合 Redux 导致的，一个比较清晰的[解答](https://github.com/react-community/react-navigation/issues/1111#issuecomment-308042866)，但是里面的解决方案并不完美，
 
 # 更多
+
+- [Demo](https://github.com/react-community/react-navigation/blob/master/examples/NavigationPlayground/js/)
 
 - [React Navigation](https://reactnavigation.org/docs/intro/)
 

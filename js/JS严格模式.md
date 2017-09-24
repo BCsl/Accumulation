@@ -1,6 +1,6 @@
-# 严格模式
+# [严格模式](https://eslint.org/docs/rules/strict)
 
-JS 文件头部加上 `use strict;`，ES5 引入
+JS 文件头部或者方法开始加上 `use strict;`，ES5 引入
 
 - 变量必须声明后再使用
 - 函数的参数不能有同名属性，否则报错

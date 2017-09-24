@@ -129,9 +129,12 @@ ReactDOM.render(
 
 > 注意: React.PropTypes 自 React v15.5 起已弃用。请使用 [prop-types](https://www.npmjs.com/package/prop-types) 库代替
 
+`npm install --save prop-types`
+
 `React.PropTypes` 返回的是一系列验证函数，用于确保接收的数据类似是否是有效的
 
 ```javascript
+import PropTypes from 'prop-types';
 
 class Greeting extends React.Component {
     render() {

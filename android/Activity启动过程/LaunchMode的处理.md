@@ -1,4 +1,4 @@
-# ActivityManagerService对不同的launchMode或IntentFlag的处理
+# ActivityManagerService 对不同的 launchMode 或 IntentFlag 的处理
 
 当前启动一个 Activity，`AMS` 会新建该 Activity 在 `AMS` 中的实例 `ActivityRecord` 对象，具体在 `ActivityStackSupervisor#startActivityUncheckedLocked` 方法处理，对于使用 `Intent.FLAG_ACTIVITY_NEW_TASK` 、`ActivityInfo.LAUNCH_SINGLE_TASK` 和 `ActivityInfo.LAUNCH_SINGLE_INSTANCE`，新建之后还需要在其管理的 `ActivityStack` 中查找是否已经创建过了，如果是，那么对于不同的 `launcheMode` 或 `IntentFlag` 进行相应的处理
 
@@ -6,10 +6,11 @@
 
 以下几种情况下，待启动的 Intent.FLAG 会带上 `Intent.FLAG_ACTIVITY_NEW_TASK`，代表可能需要在新的任务栈启动目标 `Activity`：
 
-- （1）`sourceRecord=null` 说明要启动的 `Activity` 并不是由一个 `Activity` 的 `Context` 启动的，这时候我们总是启动一个新的 `TASK`
-- （2）`Launcher` 是 `SingleInstance` 模式（或者说启动新的 `Activity` 的源 `Activity` 的 `launchMode` 为 `SingleInstance`）,因为 `SingleInstance` 模式的 `Activity` 不希望和你分享同一个 `TaskRecord`
-- （3）需要启动的 `Activity` 的 `launchMode == ActivityInfo.LAUNCH_SINGLE_INSTANCE|| r.launchMode ==ActivityInfo.LAUNCH_SINGLE_TASK`，因为表明了自己希望在新的 `TaskRecord` 中启动
-- （4）`sourceRecord` 正在 `finish`
+- (1)`sourceRecord=null` 说明要启动的 `Activity` 并不是由一个 `Activity` 的 `Context` 启动的，这时候我们总是启动一个新的 `TASK`
+- (2)`Launcher` 是 `SingleInstance` 模式（或者说启动新的 `Activity` 的源 `Activity` 的 `launchMode` 为 `SingleInstance`）,因为 `SingleInstance` 模式的 `Activity` 不希望和你分享同一个 `TaskRecord`
+- (3)需要启动的 `Activity` 的 `launchMode == ActivityInfo.LAUNCH_SINGLE_INSTANCE|| r.launchMode ==ActivityInfo.LAUNCH_SINGLE_TASK`，因为表明了自己希望在新的 `TaskRecord` 中启动
+- (4)`sourceRecord` 正在 `finish`
+- (5) 从 Launcher 启动，Launcher 会帮你自带
 
 代码
 

@@ -930,7 +930,7 @@ public abstract class HeaderScrollingViewBehavior extends ViewOffsetBehavior<Vie
 }
 ```
 
-这个基类的代码还是很好理解的，因为之前就说过了，正常来说被依赖的 View 会优先于依赖它的 View 处理，所以需要依赖的 View 可以在 measure/layout 的时候，找到依赖的 View 并获取到它的测量/布局的信息，这里的处理就是依靠着这种关系来实现的
+这个基类的代码还是很好理解的，因为之前就说过了，正常来说被依赖的 View 会优先于依赖它的 View 处理，所以需要依赖的 View 可以在 measure/layout 的时候，找到依赖的 View 并获取到它的测量/布局的信息，然后根据依赖的 View 的信息来测量和对 child 进行布局，最后的效果就是把 Child 置于 Header 之下，且如果高度为 `WRAP_CONTENT`，高度就是沾满剩余的空间
 
 我们的实现类，需要重写的除了抽象方法 `findFirstDependency` 外，还需要重写 `getScrollRange`，我们把 Header 的 Id `id_uc_news_header_pager` 定义在 `ids.xml` 资源文件内，方便依赖的判断；至于缩放的高度，根据 **结果图** 得知是 `Header高度 - Title高度 - Tab高度`，把 Title 高度 `uc_news_header_title_height` 和 Tab 视图的高度 `uc_news_tabs_height` 也定义在 `dimens.xml`，得出如下代码
 

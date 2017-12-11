@@ -58,7 +58,7 @@ public void startActivity(Intent intent, Bundle options) {
 
 ## Step4
 
-`Instrumentation`对象，用来辅助管理`Activity`生命周期，应用启动的时候新建，保存在`Activity`变量`mInstrumentation`
+`Instrumentation` 对象，用来辅助管理 `Activity` 生命周期，应用启动的时候新建，保存在 `Activity` 变量 `mInstrumentation`
 
 ```java
 Activity.java
@@ -97,7 +97,7 @@ public void startActivityForResult(Intent intent, int requestCode, Bundle option
 
 ## Step5
 
-使用`ActivityManagerProxy`的代理对象通知`AMS`去启动一个`Activity`
+使用 `ActivityManagerProxy` 的代理对象通知 `AMS` 去启动一个 `Activity`
 
 ```java
 Instrumentation.java
@@ -176,7 +176,7 @@ public int startActivity(IApplicationThread caller, String callingPackage, Inten
 
 ## Step7
 
-`Ams`处理`START_ACTIVITY_TRANSACTION`请求
+`Ams` 处理 `START_ACTIVITY_TRANSACTION` 请求
 
 ```java
 ActivityManagerNative.java
@@ -230,7 +230,7 @@ ActivityManagerService.java
 
 ## Step9
 
-`ActivityManagerService`调用`ActivityStackSupervisor`处理，ActivityStackSupervisor用来辅助管理ActivityStack，ActivityStack里面有多个TaskRecord，即通常说的Activity栈，TaskRecord有多个ActivityRecord，是Activity在内核空间的表示； ActivityStackSupervisor内部有两种ActivityStack，mHomeStack和mFocusedStack,mHomeStack保存launcher app的Activity，mFocusedStack保存当前接受输入事件和正启动的下一个Activity
+`ActivityManagerService` 调用 `ActivityStackSupervisor` 处理，`ActivityStackSupervisor` 用来辅助管理 `ActivityStack`，`ActivityStack` 里面有多个 `TaskRecord`，通常会因为 Activity 的 `taskAffinity` 值的创建，而对于 `SingleInstance` 则独享一个 `TaskRecord`，也就常说的 `Activity` 栈，`TaskRecord` 有多个 `ActivityRecord`，是 `Activity` 在内核空间的表示； `ActivityStackSupervisor`内部有两种 `ActivityStack`，`mHomeStack` 和 `mFocusedStack` , `mHomeStack` 保存launcher 类型的 `Activity`，`mFocusedStack` 保存当前接受输入事件和正启动的下一个 `Activity`，这些都是非 `Launcher` 类型的 `Activity`
 
 ```java
 ActivityManagerService.java
@@ -256,7 +256,7 @@ ActivityManagerService.java
 
 ## Step10
 
-`AMS`中对`Activity`的管理是通过任务栈的形式来管理的，也就是利用`TaskRecord`代表Task，系统中有很多Task，所以就出现了Task栈----`ActivityStack`，按理说只要一个`ActivityStack`就OK了，但是Android4.0+有两个`ActivityStack`，并且还可以有多个。 `ActivityStackSupervisor`是一个管理`ActivityStack`类，里面的函数应该可以给出上面的答案。相关函数主要有`adjustStackFocus()`、`getFocusedStack()`、`setFocusedStack()`等。[ReadMore](http://blog.csdn.net/guoqifa29/article/details/39341931)
+`AMS` 中对 `Activity` 的管理是通过任务栈的形式来管理的，也就是利用 `TaskRecord` 代表Task，系统中有很多Task，所以就出现了Task栈---- `ActivityStack`，按理说只要一个 `ActivityStack` 就OK了，但是Android4.0+有两个`ActivityStack`，并且还可以有多个。 `ActivityStackSupervisor`是一个管理`ActivityStack`类，里面的函数应该可以给出上面的答案。相关函数主要有`adjustStackFocus()`、`getFocusedStack()`、`setFocusedStack()`等。[ReadMore](http://blog.csdn.net/guoqifa29/article/details/39341931)
 
 ```java
 ActivityStackSupervisor.java
@@ -282,8 +282,7 @@ final int startActivityMayWait(IApplicationThread caller, int callingUid,
         intent = new Intent(intent);
 
         // Collect information about the target of the Intent.
-        ActivityInfo aInfo = resolveActivity(intent, resolvedType, startFlags,
-                profileFile, profileFd, userId);
+        ActivityInfo aInfo = resolveActivity(intent, resolvedType, startFlags, profileFile, profileFd, userId);
 
         synchronized (mService) {
             int callingPid;
@@ -296,7 +295,7 @@ final int startActivityMayWait(IApplicationThread caller, int callingUid,
                 callingPid = callingUid = -1;
             }
             //初始化用户ID和进程ID
-            final ActivityStack stack = getFocusedStack();//这里会是mHomeStack
+            final ActivityStack stack = getFocusedStack(); //获取当前取得用户焦点的栈，这里会是mHomeStack
                   //config为null，从launcher启动
             stack.mConfigWillChange = config != null&& mService.mConfiguration.diff(config) != 0;
 
@@ -305,7 +304,7 @@ final int startActivityMayWait(IApplicationThread caller, int callingUid,
             if (aInfo != null &&(aInfo.applicationInfo.flags&ApplicationInfo.FLAG_CANT_SAVE_STATE) != 0) {
                 // This may be a heavy-weight process!  Check to see if we already
                 // have another, different heavy-weight process running.
-                //....
+                //....不会进来这里
             }
 
             int res = startActivityLocked(caller, intent, resolvedType,
@@ -328,33 +327,7 @@ final int startActivityMayWait(IApplicationThread caller, int callingUid,
             Binder.restoreCallingIdentity(origId);
 
             if (outResult != null) {
-                outResult.result = res;
-                if (res == ActivityManager.START_SUCCESS) {
-                    mWaitingActivityLaunched.add(outResult);
-                    do {
-                        try {
-                            mService.wait();
-                        } catch (InterruptedException e) {
-                        }
-                    } while (!outResult.timeout && outResult.who == null);
-                } else if (res == ActivityManager.START_TASK_TO_FRONT) {
-                    ActivityRecord r = stack.topRunningActivityLocked(null);
-                    if (r.nowVisible) {
-                        outResult.timeout = false;
-                        outResult.who = new ComponentName(r.info.packageName, r.info.name);
-                        outResult.totalTime = 0;
-                        outResult.thisTime = 0;
-                    } else {
-                        outResult.thisTime = SystemClock.uptimeMillis();
-                        mWaitingActivityVisible.add(outResult);
-                        do {
-                            try {
-                                mService.wait();
-                            } catch (InterruptedException e) {
-                            }
-                        } while (!outResult.timeout && outResult.who == null);
-                    }
-                }
+              //...
             }
 
             return res;
@@ -366,7 +339,7 @@ final int startActivityMayWait(IApplicationThread caller, int callingUid,
 
 ## Step11
 
-用户启动组件权限的检测，并会新建相应的`ActivityRecord`,
+用户启动组件权限的检测，并会新建相应的 `ActivityRecord`,
 
 ```java
 ActivityStackSupervisor.java
@@ -384,8 +357,8 @@ final int startActivityLocked(IApplicationThread caller,Intent intent, String re
         int err = ActivityManager.START_SUCCESS;
         ProcessRecord callerApp = null;
         if (caller != null) {
-          //ActivityManagerService内部保存着Processrecord的队列记录在成员变量mLruProcesses中
-          //从成员mLruProcesses中获取与参数IApplicationThread对应的Processrecord
+          //ActivityManagerService 内部保存着 Processrecord 的队列记录在成员变量 mLruProcesses 中
+          //从成员 mLruProcesses 中获取与参数 IApplicationThread 对应的 Processrecord
             callerApp = mService.getRecordForAppLocked(caller);
             if (callerApp != null) {
                 callingPid = callerApp.pid;
@@ -402,8 +375,8 @@ final int startActivityLocked(IApplicationThread caller,Intent intent, String re
         ActivityRecord sourceRecord = null;
         ActivityRecord resultRecord = null;
         if (resultTo != null) {
-          //ActivityStackSupervisor有多个ActivityStack,检测IApplicationToken.Stub类型参数是否在其中一个ActivityStack中
-          //这里的sourceRecord是mHomeStack
+          //ActivityStackSupervisor 有多个 ActivityStack,检测 IApplicationToken.Stub类 型参数是否在其中一个 ActivityStack 中
+          //这里的 sourceRecord 是 mHomeStack
             sourceRecord = isInAnyStackLocked(resultTo);
             if (DEBUG_RESULTS) Slog.v(TAG, "Will send result to " + resultTo + " " + sourceRecord);
             if (sourceRecord != null) {

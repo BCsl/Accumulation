@@ -72,7 +72,18 @@ task myTask(type: SomeType) { configure closure }
 
   一个 Task 可以依赖于另外一个 Task。Gradle 会保证被依赖的 Task 先执行，可以通过 `Task#dependsOn`、`Task#setDependsOn`、`Task#mustRunAfter`等一些列方法来指定 Task 的特定顺序
 
-Task 创建的时候可以指定 Type，通过 `type:名字表达`。告诉 Gradle，这个新建的 Task 对象会从哪个基类 Task 派生。比如，Gradle 身提供了一些通用的 Task，最常见的有 Copy 任务。Copy 是 Gradle 中的一个类。当我们:task myTask(type:Copy)的时候，创建的 Task 就是一个 Copy Task，Copy Task 实现了 `CopySpec` 接口用来指定文件拷贝的规则和行为
+- Task 的[类型](https://docs.gradle.org/current/dsl/org.gradle.api.plugins.antlr.AntlrTask.html)
+
+Task 创建的时候可以指定 Type，通过 `type:名字表达`。告诉 Gradle，这个新建的 Task 对象会从哪个基类 Task 派生。比如，Gradle 身提供了一些通用的 Task，最常见的有 Copy 任务。Copy 是 Gradle 中的一个类。当我们:task myTask(type:Copy)的时候，创建的 Task 就是一个 Copy Task，Copy Task 实现了 `CopySpec` 接口用来指定文件拷贝的规则和行为，
+
+以 `Exec` 为例，执行下面的 Task，会在 console 打印当前根目录下的文件：
+
+```gradle
+task uploadToJCenter(type: Exec) {
+    workingDir rootProject.rootDir.absolutePath
+    commandLine 'ls'  
+}
+```
 
 ### Gradle 脚本的结构
 
@@ -109,7 +120,7 @@ allprojects {
 }
 ```
 
-而 Android Gradle 插件项目有很多特有的SB，具体看 [Android Plugin DSL Reference](http://google.github.io/android-gradle-dsl/current/index.html) 和[官方教程](https://developer.android.com/studio/build/index.html)
+而 Android Gradle 插件项目有很多特有的SB，具体看 [Android Plugin DSL Reference](http://google.github.io/android-gradle-dsl/current/index.html) 和[官方教程](https://developer.android.com/studio/build/index.html)、以及 [API 文档](http://google.github.io/android-gradle-dsl/javadoc/)、[Gradle User Guide](http://tools.android.com/tech-docs/new-build-system/user-guide)
 
 接着根据参考来解析一下普通 Android Gradle 构建脚本
 

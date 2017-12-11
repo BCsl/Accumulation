@@ -89,4 +89,6 @@ delete a?.b
 
 # 参数
 
-[ECMAScript6 - 对象扩展](http://es6.ruanyifeng.com/#docs/object#Object-assign)
+- [ECMAScript6 - 对象扩展](http://es6.ruanyifeng.com/#docs/object#Object-assign)
+
+- [JavaScript 中的对象拷贝](https://juejin.im/entry/59f7d09f6fb9a044fc44061f?utm_source=gold_browser_extension)

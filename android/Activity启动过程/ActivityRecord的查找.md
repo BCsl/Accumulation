@@ -1,10 +1,10 @@
 # ActivityRecord的查找方式
 
-当启动一个Activity请求发送到Ams后，AMS为该Activity新建一个`ActivityRecord`对象，但AMS可能已经启动过这个Activity，也就是`ActivityStack`内有一个相同的`ActivityRecord` ，它记录了其所在的`ActivityStack`和`TaskRecord`，对于launcheMode是否为`ActivityInfo.LAUNCH_SINGLE_INSTANCE`有两种方式来查找
+当启动一个 Activity 请求发送到 Ams 后，AMS 为该 Activity 新建一个 `ActivityRecord` 对象，但 AMS可 能已经启动过这个 Activity，也就是 `ActivityStack` 内有一个相同的 `ActivityRecord` ，它记录了其所在的 `ActivityStack` 和 `TaskRecord` ，对于 launcheMode 是否为 `ActivityInfo.LAUNCH_SINGLE_INSTANCE` 有两种方式来查找
 
-## 非ActivityInfo.LAUNCH_SINGLE_INSTANCE，判断栈顶有效的Activity
+## 非 ActivityInfo.LAUNCH_SINGLE_INSTANCE，判断栈顶有效的 Activity
 
-匹配`TaskRecord`栈顶的第一个非finishing状态的`ActivityRecord`
+匹配 `TaskRecord` 栈顶的第一个非 finishing 状态的 `ActivityRecord`
 
 ```java
 ActivityStackSupervisor.java
@@ -13,8 +13,8 @@ ActivityRecord findTaskLocked(ActivityRecord r) {
     //mStacks，正常只有两个，mHomeStack和mFocusedStack
     for (int stackNdx = mStacks.size() - 1; stackNdx >= 0; --stackNdx) {
         final ActivityStack stack = mStacks.get(stackNdx);
-        //不是普通的Activity，而当前栈又不是HomeStack就过滤，也就是非`APPLICATION_ACTIVITY_TYPE`类型的都存放在HomeStack?
-        //而`APPLICATION_ACTIVITY_TYPE`只能放到非HomeStack
+        //不是普通的 Activity，而当前栈又不是 HomeStack 就过滤，也就是非 `APPLICATION_ACTIVITY_TYPE` 类型的都存放在 HomeStack?
+        //而 `APPLICATION_ACTIVITY_TYPE` 只能放到非 HomeStack
         if (!r.isApplicationActivity() && !stack.isHomeStack()) {
             continue;
         }
@@ -27,7 +27,7 @@ ActivityRecord findTaskLocked(ActivityRecord r) {
 }
 ```
 
-接着调用了`ActivityStack#findTaskLocked`，遍历`TaskRecord`，找到栈顶（非finish状态不考虑），userId相同、非`SINGLE_INSTANCE`、affinity值相同（默认为包名）或者`component`（包名和类名）相同的Activity
+接着调用了 `ActivityStack#findTaskLocked`，遍历 `TaskRecord`，找到栈顶（非finish状态不考虑），userId 相同、非`SINGLE_INSTANCE`、affinity 值相同（默认为包名）或者 `component`（包名和类名）相同的 Activity
 
 ```java
 ActivityStack.java
@@ -49,7 +49,7 @@ ActivityRecord findTaskLocked(ActivityRecord target) {
         }
         //和TaskRecord的栈顶Activity状态比较
         final ActivityRecord r = task.getTopActivity(); //栈顶向下查找第一个非finish的ActivityRecord
-        if (r == null || r.finishing || r.userId != userId || r.launchMode == ActivityInfo.LAUNCH_SINGLE_INSTANCE) {
+        if (r == null || r.finishing || r.userId != userId || r.launchMode == ActivityInfo.LAUNCH_SINGLE_INSTANCE) {  //非 LAUNCH_SINGLE_INSTANCE
             continue;
         }
         //taskAffinity比较

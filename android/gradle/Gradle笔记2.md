@@ -230,6 +230,94 @@ BUILD SUCCESSFUL
 Total time: 1 secs
 ```
 
+### Apk 重命名的例子
+
+很多时候我们需要在项目 APK 生成后需要把 APK 拷贝到指定目录并且进行重命名
+
+首先确定思路就是，找到打包成 APK 的 Task，再通过 `Task#doLast` 方法添加 APK 拷贝到其他目录的操作
+
+#### 1.找到打包成 Apk 的 Task
+
+怎么找到这个 Task？最简单的方式就是在 AS 上执行一次打包过程，然后看 Gradle console 的输出，结果如下：
+
+![BuildTask](./img/AppBuildTask.png)
+
+根据经验可以指定 `assembleGPDebug` 这个就是我们要找到 Task，其中 `GP` 是我的一个 `productFlavors`，可以忽略，且属于的是 App 这个模块
+
+#### 2.通过 Task#doLast 方法添加指定的操作
+
+Task 找到后，那就开干吧，这里我们先把需求改成在 Apk 打包成功后输出 `HelloWorld`
+
+```
+build.gradle
+
+apply plugin: 'com.android.application'
+
+...省略啦
+android{
+  //...省略啦
+}
+
+def last = {
+    println "HelloWorld"
+}
+
+project.tasks.findByName("assembleGPDebug").doLast last //使用闭包作为参数
+
+
+dependencies{
+  //...省略啦
+}
+```
+
+so easy，但是当我编译的时候却提示
+
+`Error:(111, 0) Cannot invoke method doLast() on null object <a href="openFile:/Users/liusubing/Project/github/Timbload/app/build.gradle">Open File</a>`
+
+根据提示，`project.tasks.findByName("assembleGPDebug")` 返回的是 null 对象，为什么？接着把当前所有的 Task 打印出来看看什么情况，添加如下代码
+
+```
+project.tasks.each { task ->
+    println "println task of:" + task.getName()
+}
+```
+
+结果如下：
+
+```
+print task of:assemble
+print task of:assembleAndroidTest
+print task of:buildDependents
+print task of:buildNeeded
+print task of:check
+print task of:cleanBuildCache
+print task of:compileLint
+print task of:connectedCheck
+print task of:consumeConfigAttr
+print task of:deviceCheck
+print task of:extractProguardFiles
+print task of:lint
+print task of:preBuild
+print task of:resolveConfigAttr
+print task of:sourceSets
+print task of:uninstallAll
+```
+
+没有找到我需要的 `assembleGPDebug`，为什么？这时候再想想脚本的执行流程和生命周期，我的想法是，上面脚本在解析的阶段就已经执行，这时候打印出来的 Task 并不全，我们需要在 `project` 执行完或者配置完之后获取到的 task 才是全的，那么时机应该是在 `Configuration` 阶段之后
+
+修改代码如下，其中 `afterEvaluate` 方法会在 `project` 评估（evaluated）完之后回调并执行闭包参数
+
+```
+afterEvaluate {
+    project ->
+        project.tasks.findByName("assembleGPDebug").doLast last
+}
+```
+
 ## 参考
 
-[The Build Lifecycle](https://docs.gradle.org/current/userguide/build_lifecycle.html)
+- [The Build Lifecycle](https://docs.gradle.org/current/userguide/build_lifecycle.html)
+
+- [Android Gradle Learnings: Hooking into Android Tasks](http://gregloesch.com/dev/2015/08/19/Android-Gradle-Learnings.html)
+
+- [打通Android Gradle编译过程的任督二脉](https://mp.weixin.qq.com/s?__biz=MzI1NjEwMTM4OA==&mid=2651231835&idx=1&sn=c9973f4476fb98a3003ca86aeb3744eb&scene=1&srcid=0602TPquTPxN1rQAzlWGQX0X&key=f5c31ae61525f82ec1198c6623ab7e654f4f358ba5e71aeda1ed1deae146436e2dac68cebe35f47ae672e6b82f33ab66&ascene=0&uin=MTYzMjY2MTE1&devicetype=iMac+MacBookPro10%2C1+OSX+OSX+10.11.4+build(15E65)&version=11020201&pass_ticket=rsJxex9Bn1eN7iJgW6FUI2KG3V9O6e3TH42j1U%2Fy5SU%3D)

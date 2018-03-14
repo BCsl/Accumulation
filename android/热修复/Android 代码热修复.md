@@ -4,36 +4,31 @@
 
 ## 1、方案（底层、类加载方案）
 
-![热修复的两大流派](./img/hotfix_way.png)
-
-两种方案的优劣：
-
-- 底层替换方案限制比较多，但时效性高，可以立即生效
-- 类加载方案方案修复范围广，限制少，时效性差，需要重新启动安装补丁
+![热修复的两大流][1]
 
 ### 底层替换方案
 
-直接在 Native 层把已经加载的类中的方法实体进行替换，在原来的类的基础上进行修改。但没法实现对原有类的方法和字段增减，因为会破坏原有类的结构，导致整个 Dex 方法数的变化，这样在访问方法的时候就无法正常索引到正确方法
+直接在 Native 层把已经加载的类中的方法实体进行替换，在原来的类的基础上进行修改，**可以立即生效**，**但没法实现对原有类的方法和字段增减**，因为会破坏原有类的结构，导致整个 Dex 方法数的变化，这样在访问方法的时候就无法正常索引到正确方法
+
+![底层方法替换][2]
 
 ### 类加载方案
 
-类加载方案的原理是在 app 重新启动后让 ClassLoader 去加载新的类。因为在 app 运行到一半的时候，所需要发生变更的类已经被加载过了，在 Android 上是无法对一个类进行卸载的。如果不重启，原来的类还在虚拟机中（类缓存机制），就无法加载新类。所以需要重新启动程序，并在没走到业务逻辑之前加载补丁中的新类
+类加载方案的原理是让 `ClassLoader` 去加载新的类。但原来的类如果已经被加载到虚拟机中（类缓存机制），就无法加载新类。所以**需要重新启动程序**，并在没走到业务逻辑之前加载补丁中的新类
 
 ## 2、类加载机制
 
-在 JAVA 中，JAVA 虚拟机可以加载 .class 文件，最终形成可以被虚拟机直接使用的 Java 类型，这就是虚拟机的类加载机制。而在 Android 的 `Dalvik/Art` 环境下对应的是 .dex 文件
+JAVA 虚拟机可以加载 .class 文件，并对数据进行校验，解析和初始化，最终形成可以被虚拟机直接使用的 Java 类型。而在 Android 的 `Dalvik/Art` 环境下加载的就是 .dex 文件
 
-![dex](./img/dex.png)
-
-![类的加载过程](./img/类的加载过程.jpg)
+![https://raw.githubusercontent.com/BCsl/Accumulation/157e9e15b0714a25a4647753b5e4a150582c2108/android/热修复/img/类的加载过程.jpg][4]
 
 ### 2.1、类的装载
 
-> 类加载器并不需要等到某个类被"首次主动使用"时再加载它，JVM规范允许类加载器在预料某个类将要被使用时就预先加载它，如果在预先加载的过程中遇到了.class文件缺失或存在错误，类加载器必须在程序首次主动使用该类时才报告错误（LinkageError错误）如果这个类一直没有被程序主动使用，那么类加载器就不会报告错误
+> 类加载器并不需要等到某个类被 "首次主动使用" 时再加载它，JVM 规范允许类加载器在预料某个类将要被使用时就预先加载它，如果在预先加载的过程中遇到了 .class 文件缺失或存在错误，类加载器必须在程序首次主动使用该类时才报告错误（ LinkageError 错误）如果这个类一直没有被程序主动使用，那么类加载器就不会报告错误
 
-类的加载指的是将类的 .class 文件中的二进制数据读入到内存中，将其放在运行时数据区的**方法区**内，然后在**堆区**创建一个 `java.lang.Class` 对象，用来封装类在方法区内的数据结构。类的加载的最终产品是位于堆区中的 `Class` 对象，`Class` 对象封装了类在方法区内的数据结构，并且向 Java 程序员提供了访问方法区内的数据结构的接口
+类的装载指的是将类的 .class 文件中的二进制数据读入到内存中，存放在**方法区**内，然后在**堆区**创建一个该类的 `java.lang.Class` 对象，用来封装该类在方法区内的数据结构，并且向外提供了访问方法区内的数据结构的接口
 
-![类的加载](./img/类的加载.png)
+![https://raw.githubusercontent.com/BCsl/Accumulation/157e9e15b0714a25a4647753b5e4a150582c2108/android/热修复/img/类的加载.png][5]
 
 ### 2.2、链接
 
@@ -49,21 +44,25 @@
 
 时机（这个类还没有被加载和链接，那先进行加载和链接）
 
-- 创建类的实例，也就是 new 一个对象
+- 创建类的实例，也就是 `new` 一个对象
 - 访问某个类或接口的静态变量，或者对该静态变量赋值
 - 调用类的静态方法
-- Class.forName("xxx.xxx.xxx")
+- `Class.forName("xxx.xxx.xxx")`
 - 初始化一个类的子类
 
 ### 2.4、ClassLoader
 
-JVM 的类加载是通过 ClassLoader 及其子类来完成的
+JAVA 类加载是通过 `ClassLoader` 及其子类来完成的
 
-- 父类委托机制
+- 全盘加载机制
 
-  - 从已装载过的类中找（缓存机制）
-  - 如果从已装载过的列表中找不到，则从父类装载
-  - 如果父类找不到，从子类装载
+  - 1.指一个 `ClassLoader` 装载一个类时，除非显示使用另一个 `ClassLoader`，该类所依赖及引用的类也由这个 `ClassLoader` 载入
+
+- 双亲委托机制
+
+  - 1.从当前已装载过的类中找（缓存机制）
+  - 2.如果找不到，则从父类装载
+  - 3.如果父类找不到，从子类装载
 
 `ClassLoader#loadClass` 方法
 
@@ -95,19 +94,21 @@ protected Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundE
 }
 ```
 
-- 全盘委托机制
-
-  - 指一个 ClassLoader 装载一个类时，除非显示使用另一个 ClassLoader，该类所依赖及引用的类也由这个 ClassLoader 载入
-
-解决的问题，确定某一个类，需要**类的全限定名以及加载此类的`ClassLoader`来共同确定**。也就是说即使两个类的全限定名是相同的，但是因为不同的`ClassLoader`加载了此类，那么在JVM中它是不同的类。采用了委托模型以后加大了不同的 `ClassLoader`的交互能力，比如JDK本生提供的类库，比如`HashMap`,`LinkedList`等等，这些类由bootstrp类加载器加载了以后，无论你程序中有多少个类加载器，那么这些类其实都是可以共享的，这样就避免了不同的类加载器加载了同样名字的不同类以后造成混乱
+同一个 "类"（全限定名一样）是可以被多个 `ClassLoader` 加载，因此确定某一个类，需要 **类的全限定名以及加载此类的`ClassLoader`来共同确定**。
 
 ### 2.5、Android 中的 PathClassLoader 和 DexClassLoader
 
-在 Android 中，提供了 `PathClassLoader` 和 `DexClassLoader` 两个加载器，它们都继承于 `BaseDexClassLoader`，而 `BaseDexClassLoader` 则继承于 `ClassLoader`。对于 `PathClassLoader` ，Android 是使用这个类作为其系统类和已安装应用类的加载器。而 `DexClassLoader` 可以用来从 JAR/ZIP/APK 类型的文件内部加载 classes.dex 文件，可以用来执行非安装的程序代码
+在 Android 中，提供了 `PathClassLoader` 和 `DexClassLoader` 两个加载器，它们都继承于 `BaseDexClassLoader`，而 `BaseDexClassLoader` 则继承于 `ClassLoader`。对于 `PathClassLoader` ，Android 是使用这个类作为其系统类和已安装应用类的加载器。而 `DexClassLoader` 可以用来从 JAR/ZIP/APK 类型的文件内部加载 classes.dex 文件
 
-![Android_ClassLoader](./img/Android-ClassLoader.png)
+![https://raw.githubusercontent.com/BCsl/Accumulation/157e9e15b0714a25a4647753b5e4a150582c2108/android/热修复/img/Android-ClassLoader.png][6]
 
-实际区别在于构造函数少了 `optimizedDirectory` 参数
+应用的 `ClassLoader` 类型实际就是 `PathClassLoader`
+
+![https://raw.githubusercontent.com/BCsl/Accumulation/157e9e15b0714a25a4647753b5e4a150582c2108/android/热修复/img/dex_element.png][7]
+
+`PathClassLoader` 和 `DexClassLoader` 实际区别在于构造函数少了 `optimizedDirectory` 参数，因为对于 `PathClassLoader` 来说，应用安装的时候 dex 优化已经进行并保存了
+
+下面来看 `DexClassLoader`，它的构造函数 `DexClassLoader(String dexPath, String optimizedDirectory, String libraryPath, ClassLoader parent)`
 
 参数                 | 意义
 :----------------- | :----------------------------------------------------------------------
@@ -116,14 +117,13 @@ optimizedDirectory | 制定输出 dex 优化后的 odex 文件，要求私有的
 librarySearchPath  | 以":"分割的 Native 库路径
 parent             | 父类加载器
 
-DexClassLoader 初始化和加载类的过程
+`DexClassLoader` 初始化和加载类的过程
 
-![DexClassLoader初始化和加载类的过程](./img/DexClassLoader初始化和加载类的过程.png)
+![https://raw.githubusercontent.com/BCsl/Accumulation/157e9e15b0714a25a4647753b5e4a150582c2108/android/热修复/img/DexClassLoader初始化和加载类的过程.png][8]
 
 初始化构造 Element 数组
 
 ```java
-
 private static final String DEX_SUFFIX = ".dex";
 private static final String zipSeparator = "!/";
 
@@ -215,13 +215,13 @@ public Class findClass(String name, List<Throwable> suppressed) {
 }
 ```
 
-![dex_find](./img/dex_find.png)
+![https://raw.githubusercontent.com/BCsl/Accumulation/157e9e15b0714a25a4647753b5e4a150582c2108/android/热修复/img/dex_find.png][9]
 
 ## 3、代码热修复原理
 
 基于上面 ClassLoader 加载类的流程是按顺序遍历 dex 文件，所以把有问题的需要更改的类打包到一个 dex（patch.dex）中去，然后把这个 dex 插入到 Elements 的最前面，这就是代码热更的原理
 
-![dex_patch](./img/dex_patch_find.png)
+![https://raw.githubusercontent.com/BCsl/Accumulation/157e9e15b0714a25a4647753b5e4a150582c2108/android/热修复/img/dex_patch_find.png][10]
 
 ### 3.1、补丁制作
 
@@ -234,7 +234,6 @@ public Class findClass(String name, List<Throwable> suppressed) {
 处理兼容
 
 ```java
-
 private static void installDexes(ClassLoader loader, File dexDir, List<File> files)
         throws IllegalArgumentException, IllegalAccessException, NoSuchFieldException,
         InvocationTargetException, NoSuchMethodException, IOException, InstantiationException, ClassNotFoundException {
@@ -257,7 +256,6 @@ private static void installDexes(ClassLoader loader, File dexDir, List<File> fil
 通过反射，修改应用 `ClassLoader` 的私有成员变量 `pathList` 内的 `dexElements` 数组
 
 ```java
-
 private static final class V24 {
 
     private static void install(ClassLoader loader, List<File> additionalClassPathEntries, File optimizedDirectory)
@@ -285,7 +283,7 @@ private static final class V24 {
 
 ### 3.3、CLASS_ISPREVERIFIED 问题解决
 
-> 只会在 Dalvik 虚拟机出现，Art 虚拟机上不会出现该问题，而且在 Android5.0 以上源码中搜索 CLASS_ISPREVERIFIED 也是没结果的
+> 只会在 Dalvik 虚拟机出现，Art 虚拟机上不会出现该问题，但 Art 模式下，如果类修改了结构，就会出现内存错乱的问题。为了解决这个问题，就必须把所有相关的调用类、父类子类等等全部加载到patch.dex中
 
 ```
 Class resolved by unexpected DEX: Lcom/dodola/rocoosample/MainActivity;(0xa4f94580):0x96e22000 ref [Lcom/dodola/rocoosample/c;] Lcom/dodola/rocoosample/c;(0xa4f94580):0x96d76000
@@ -310,21 +308,21 @@ java.lang.IllegalAccessError: Class ref in pre-verified class resolved to unexpe
    at dalvik.system.NativeStart.main(Native Method)
 ```
 
-问题描述：假设 A 类在它的 static 方法，private 方法，构造函数，override 方法中直接引用到 B 类。如果 A 类和 B 类在同一个 dex 中，那么 A 类就会被打上 CLASS_ISPREVERIFIED 标记。A 类如果还引用了一个 C 类，而 C 类在其他 dex 中，那么 A 类并不会被打上标记
+问题描述：假设 A 类在它的 `static` 方法，`private` 方法，构造函数，`override` 方法中直接引用到 B 类。如果 A 类和 B 类在同一个 dex 中，那么 A 类就会被打上 `CLASS_ISPREVERIFIED` 标记。A 类如果还引用了一个 C 类，而 C 类在其他 dex 中，那么 A 类并不会被打上标记
 
-![prevent_impeverified](./img/prevent_impeverified.jpg)
+解决方法是在所有类的构造函数中插入这行代码 `System.out.println(AntilazyLoad.class);`，而 `AntilazyLoad.class` 这个类另外打包成另外一个 dex 文件并在主程序初始化的时候注入
 
-在所有类的构造函数中插入这行代码 `System.out.println(AntilazyLoad.class);`，而 `AntilazyLoad.class` 这个类另外打包成另外一个 dex 文件并在主程序初始化的时候注入
+![https://raw.githubusercontent.com/BCsl/Accumulation/157e9e15b0714a25a4647753b5e4a150582c2108/android/热修复/img/prevent_impeverified.jpg][11]
 
 #### 3.3.1、字节码插桩
 
-![](./img/aop.png)
+![https://raw.githubusercontent.com/BCsl/Accumulation/157e9e15b0714a25a4647753b5e4a150582c2108/android/热修复/img/aop.png][12]
 
-字节码操作类库 ：AMS、javassit
+字节码操作类库 ：**AMS**、**javassit**
 
 Java 类二进制流数据项按顺序存储在 class 文件中，相邻的项之间没有间隔，包含了许多大小不同的项，由于每一项的结构都有严格规定，这使得 class 文件能够从头到尾被顺利地解析
 
-![Class 文件格式](./img/compile_bytecode.jpg)
+![https://raw.githubusercontent.com/BCsl/Accumulation/157e9e15b0714a25a4647753b5e4a150582c2108/android/热修复/img/compile_bytecode.jpg][13]
 
 要求：了解字节码
 
@@ -349,23 +347,23 @@ L              | 类权限定名（如：java/lang/String）
 
 比如方法
 
-```
+```java
 long f (int n, String s, int[] arr);
 ```
 
 转换成字节码后
 
-```
+```java
 f(ILjava/lang/String;[I)J
 ```
 
 另外也可以使用 `jclasslib bytecode viewer` 插件来查看
 
-![使用 jclasslib bytecode viewer 插件查看](./img/compile_bytecode_method.png)
+![https://raw.githubusercontent.com/BCsl/Accumulation/157e9e15b0714a25a4647753b5e4a150582c2108/android/热修复/img/compile_bytecode_method.png][14]
 
 再看一个例子稍微了解 JVM 指定集：
 
-```
+```java
 public TestHack() {
      System.out.println(AntiLazyLoad.class);
  }
@@ -391,9 +389,13 @@ ASM 通过类似于简单的 Visitor 模式按照 class 文件结构依次访问
 
 需要了解三个对象，`ClassReader`、`ClassVisitor` 和 `ClassWriter`
 
-![ClassReader、ClassVisitor 和 ClassWriter](./img/Asm-Class.png)
+`ClassReader`：装载字节码，知道如何去遍历 `ClassVisitor`：接收字节码遍历事件，责任链模式，`FieldVisitor` 和 `MethodVisitor` 与之类似 `ClassWriter`：`ClassVisitor` 的实现类，字节码文件写入，责任链的终点
 
-![使用时序图](./img/Asm-Sequence.png)
+![https://raw.githubusercontent.com/BCsl/Accumulation/157e9e15b0714a25a4647753b5e4a150582c2108/android/热修复/img/Asm-Class.png][15]
+
+责任链调用流程
+
+![https://raw.githubusercontent.com/BCsl/Accumulation/157e9e15b0714a25a4647753b5e4a150582c2108/android/热修复/img/Asm-Sequence.png][16]
 
 还是上面的例子，使用 `ASM Bytecode Outline` 插件得出 `ASM` 对应的代码
 
@@ -416,7 +418,6 @@ mv.visitEnd();
 最后的代码
 
 ```java
-
 public static byte[] referHackWhenInit(InputStream inputStream) {
     ClassReader cr = new ClassReader(inputStream);
     ClassWriter cw = new ClassWriter(cr, ClassWriter.COMPUTE_MAXS);
@@ -456,16 +457,9 @@ public static byte[] referHackWhenInit(InputStream inputStream) {
         }
     };
     cr.accept(cv, 0);
-    if (!hasHackSuccess && !isInterface) {
-        // has not hack and not interface
-        // 第二次尝试hack  这个有问题 先关闭
-        //return addCinitAndHack(cr,cw);
-        return cw.toByteArray();
-    } else {
-        return cw.toByteArray();
-    }
+    //...
+    return cw.toByteArray();
 }
-`
 ```
 
 #### 3.3.2、副作用
@@ -476,13 +470,36 @@ Dalvik 下影响类的加载性能，Art 下类地址写死，导致必须包含
 
 上面说的各个步骤如果都是人工去完成，操作性很差且容易出错，但可以入侵打包流程，实现自动化流程
 
-![打包流程](./img/android 打包流程.png)
+![https://raw.githubusercontent.com/BCsl/Accumulation/157e9e15b0714a25a4647753b5e4a150582c2108/android/热修复/img/android 打包流程.png][17]
 
 目标：找到 class 转化成 dex 的 Task，进行字节码插桩
 
 最直接的方式是在 As 中执行一次打包操作，观察 Gradle console 中 Task 的执行
 
-![class2dex](./img/class2dex.png)
+![https://raw.githubusercontent.com/BCsl/Accumulation/157e9e15b0714a25a4647753b5e4a150582c2108/android/热修复/img/class2dex.png][18]
+
+依赖修改
+
+```java
+/**
+ * prepareClosure ：记录需要插桩和不需要插桩的类，相应文件夹建立，rocoo_fix{} 这个
+ * rocooJarBeforeDexTask ：字节码插桩，hash 值记录，差异 .class 文件保存
+ * rocooPatchTask ：class 文件打包成 dex 文件
+ * copyMappingClosure：保存 mapping 文件
+ *
+ * 这里的依赖关系是这样：1、dexTask 原本的依赖项 <= 2、rocooJarBeforeDexTask <= 3、rocooPatchTask <= 4、dexTask
+ * 步骤 1 执行后，项目所有的 java 文件已经编译成 .class 文件
+ * 步骤 2 根据配置，进行插桩并替换原 .class 文件，保存 mapping 文件和项目所有类（插桩后）的 hash 键值对和修改过的 .class 文件
+ * 步骤 3 对修改的 .class 文件进行打包成 .dex
+ * 步骤 4 正常的打包成（插桩后）.dex 的流程
+ */
+def rocooJarBeforeDexTask = project.tasks[rocooJarBeforeDex]
+rocooJarBeforeDexTask.dependsOn dexTask.taskDependencies.getDependencies(dexTask)
+rocooJarBeforeDexTask.doFirst(prepareClosure)
+rocooJarBeforeDexTask.doLast(copyMappingClosure)
+rocooPatchTask.dependsOn rocooJarBeforeDexTask
+dexTask.dependsOn rocooPatchTask
+```
 
 > 根据 [gradle transform](http://tools.android.com/tech-docs/new-build-system/transform-api) 中提到，Android Gradle plugin 在 1.5 开始允许第三方 Gradle 插件可以在 .class 文件打包成 dex 文件前操控 .class 文件，目的是简化自定义 class 注入，而不再需要操作 Task，而且过程也变得更灵活了
 
@@ -493,7 +510,6 @@ Dalvik 下影响类的加载性能，Art 下类地址写死，导致必须包含
 使用基线包的 mapping.txt 文件打包
 
 ```java
-
 private static Map applyMapping(Project project, BaseVariant variant, Task proguardTask) {
     Map hashMap
     RocooFixExtension rocooConfig = RocooFixExtension.getConfig(project);
@@ -531,7 +547,7 @@ private static Map applyMapping(Project project, BaseVariant variant, Task progu
 
 正常打包的时候记录下所有类的的 hash 值，打 patch 的时候再去对比
 
-```groovy
+```java
 RocooFixPlugin#applyTask
 
 //...
@@ -584,11 +600,11 @@ inputClasses.each {
 
 通过反射的方式调用
 
-![插件调用before](./img/插件调用before.png)
+![https://raw.githubusercontent.com/BCsl/Accumulation/157e9e15b0714a25a4647753b5e4a150582c2108/android/热修复/img/插件调用before.png][19]
 
 通过接口的形式调用，使用 provided 提供编译
 
-![插件调用after](./img/插件调用after.png)
+![https://raw.githubusercontent.com/BCsl/Accumulation/157e9e15b0714a25a4647753b5e4a150582c2108/android/热修复/img/插件调用after.png][20]
 
 ## 5、参考
 
@@ -602,4 +618,23 @@ inputClasses.each {
 - [混淆实操--手把手教你用applymapping](http://blog.hacktons.cn/2016/06/21/how-to-use-applymapping/)
 - [JVM指令集整理](http://www.wangyuwei.me/2017/01/19/JVM%E6%8C%87%E4%BB%A4%E9%9B%86%E6%95%B4%E7%90%86/)
 
-
+[1]: https://raw.githubusercontent.com/BCsl/Accumulation/157e9e15b0714a25a4647753b5e4a150582c2108/android/%E7%83%AD%E4%BF%AE%E5%A4%8D/img/hotfix_way.png
+[10]: https://raw.githubusercontent.com/BCsl/Accumulation/157e9e15b0714a25a4647753b5e4a150582c2108/android/%E7%83%AD%E4%BF%AE%E5%A4%8D/img/dex_patch_find.png
+[11]: https://raw.githubusercontent.com/BCsl/Accumulation/157e9e15b0714a25a4647753b5e4a150582c2108/android/%E7%83%AD%E4%BF%AE%E5%A4%8D/img/prevent_impeverified.jpg
+[12]: https://raw.githubusercontent.com/BCsl/Accumulation/157e9e15b0714a25a4647753b5e4a150582c2108/android/%E7%83%AD%E4%BF%AE%E5%A4%8D/img/aop.png
+[13]: https://raw.githubusercontent.com/BCsl/Accumulation/157e9e15b0714a25a4647753b5e4a150582c2108/android/%E7%83%AD%E4%BF%AE%E5%A4%8D/img/compile_bytecode.jpg
+[14]: https://raw.githubusercontent.com/BCsl/Accumulation/157e9e15b0714a25a4647753b5e4a150582c2108/android/%E7%83%AD%E4%BF%AE%E5%A4%8D/img/compile_bytecode_method.png
+[15]: https://raw.githubusercontent.com/BCsl/Accumulation/157e9e15b0714a25a4647753b5e4a150582c2108/android/%E7%83%AD%E4%BF%AE%E5%A4%8D/img/Asm-Class.png
+[16]: https://raw.githubusercontent.com/BCsl/Accumulation/157e9e15b0714a25a4647753b5e4a150582c2108/android/%E7%83%AD%E4%BF%AE%E5%A4%8D/img/Asm-Sequence.png
+[17]: https://raw.githubusercontent.com/BCsl/Accumulation/157e9e15b0714a25a4647753b5e4a150582c2108/android/%E7%83%AD%E4%BF%AE%E5%A4%8D/img/android%20%E6%89%93%E5%8C%85%E6%B5%81%E7%A8%8B.png
+[18]: https://raw.githubusercontent.com/BCsl/Accumulation/157e9e15b0714a25a4647753b5e4a150582c2108/android/%E7%83%AD%E4%BF%AE%E5%A4%8D/img/class2dex.png
+[19]: https://raw.githubusercontent.com/BCsl/Accumulation/157e9e15b0714a25a4647753b5e4a150582c2108/android/%E7%83%AD%E4%BF%AE%E5%A4%8D/img/%E6%8F%92%E4%BB%B6%E8%B0%83%E7%94%A8before.png
+[2]: https://mmbiz.qpic.cn/mmbiz_png/WGyNiboAjLV4PdxYlLgicllj5TVSBDhJHmVoYhqO2MFH5iabCk6UQAYziadBTNC2opZw4HGPnDh2geRGPVrZb70VTQ/640?wx_fmt=png&tp=webp&wxfrom=5&wx_lazy=1
+[20]: https://raw.githubusercontent.com/BCsl/Accumulation/157e9e15b0714a25a4647753b5e4a150582c2108/android/%E7%83%AD%E4%BF%AE%E5%A4%8D/img/%E6%8F%92%E4%BB%B6%E8%B0%83%E7%94%A8after.png
+[3]: https://raw.githubusercontent.com/BCsl/Accumulation/157e9e15b0714a25a4647753b5e4a150582c2108/android/%E7%83%AD%E4%BF%AE%E5%A4%8D/img/dex.png
+[4]: https://raw.githubusercontent.com/BCsl/Accumulation/157e9e15b0714a25a4647753b5e4a150582c2108/android/%E7%83%AD%E4%BF%AE%E5%A4%8D/img/%E7%B1%BB%E7%9A%84%E5%8A%A0%E8%BD%BD%E8%BF%87%E7%A8%8B.jpg
+[5]: https://raw.githubusercontent.com/BCsl/Accumulation/157e9e15b0714a25a4647753b5e4a150582c2108/android/%E7%83%AD%E4%BF%AE%E5%A4%8D/img/%E7%B1%BB%E7%9A%84%E5%8A%A0%E8%BD%BD.png
+[6]: https://raw.githubusercontent.com/BCsl/Accumulation/157e9e15b0714a25a4647753b5e4a150582c2108/android/%E7%83%AD%E4%BF%AE%E5%A4%8D/img/Android-ClassLoader.png
+[7]: https://raw.githubusercontent.com/BCsl/Accumulation/157e9e15b0714a25a4647753b5e4a150582c2108/android/%E7%83%AD%E4%BF%AE%E5%A4%8D/img/dex_element.png
+[8]: https://raw.githubusercontent.com/BCsl/Accumulation/157e9e15b0714a25a4647753b5e4a150582c2108/android/%E7%83%AD%E4%BF%AE%E5%A4%8D/img/DexClassLoader%E5%88%9D%E5%A7%8B%E5%8C%96%E5%92%8C%E5%8A%A0%E8%BD%BD%E7%B1%BB%E7%9A%84%E8%BF%87%E7%A8%8B.png
+[9]: https://raw.githubusercontent.com/BCsl/Accumulation/157e9e15b0714a25a4647753b5e4a150582c2108/android/%E7%83%AD%E4%BF%AE%E5%A4%8D/img/dex_find.png

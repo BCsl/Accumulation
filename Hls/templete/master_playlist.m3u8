@@ -1,0 +1,9 @@
+#EXTM3U
+#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=1143359,QUALITY=sd
+http://vd17.mycdn.me/expires/1553077879551/srcIp/210.140.66.78/srcAg/UNKNOWN/type/2/sig/58Mam9cNGiM/ct/8/urls/185.16.245.76/clientType/1/id/493765790285/video/
+#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=340835,QUALITY=lowest
+http://vd17.mycdn.me/expires/1553077879551/srcIp/210.140.66.78/srcAg/UNKNOWN/type/0/sig/yF6icQNj8v8/ct/8/urls/185.16.245.76/clientType/1/id/493765790285/video/
+#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=684701,QUALITY=low
+http://vd17.mycdn.me/expires/1553077879551/srcIp/210.140.66.78/srcAg/UNKNOWN/type/1/sig/x9Nlbrqmdv4/ct/8/urls/185.16.245.76/clientType/1/id/493765790285/video/
+#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=134343,QUALITY=mobile
+http://vd17.mycdn.me/expires/1553077879551/srcIp/210.140.66.78/srcAg/UNKNOWN/type/4/sig/icxgp0mpVO8/ct/8/urls/185.16.245.76/clientType/1/id/493765790285/video/

@@ -1,8 +1,24 @@
 # [HLS rfc8216](https://tools.ietf.org/html/rfc8216)
 
-了解的目的：客户端如果解析 m3u8 文件
+了解的目的：客户端如何解析 m3u8 文件
 
 m3u8文件有两种应用场景：多码率适配流 (Master Playlist)，单码率适配流 (Media Playlist)
+
+一些需要了解的标签
+
+4.3.2.4 EXT-X-KEY
+
+媒体切片的解密方式
+
+`#EXT-X-KEY:<attribute-list>`
+
+属性
+
+- METHOD，枚举，NONE, AES-128, and SAMPLE-AES
+- URI, 用于标识解密密钥文件
+- IV, 用于 AES 解密的向量，版本 2 以上才有
+- KEYFORMAT, 版本 5 以上才有, 标识密钥在密钥文件中的存储方式, 默认是"identity"，密钥文件中的 AES-128 密钥是以二进制方式存储的 16 个字节的密钥
+- KEYFORMATVERSIONS
 
 4.3.3 Media Playlist Tags
 
@@ -131,3 +147,5 @@ main/english-audio.m3u8
 
 - [M3U8格式讲解及实际应用分析](https://www.cnblogs.com/shakin/p/3870439.html)
 - [技术干货|HLS 协议详解及优化技术解析](http://support.upyun.com/hc/kb/article/1030975/)
+- [python爬取网站m3u8视频，将ts解密成mp4，合并成整体视频](https://blog.csdn.net/a33445621/article/details/80377424)
+- [视频内容加密封装技术研究](http://www.capt.cn/?p=4532)

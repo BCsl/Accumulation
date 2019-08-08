@@ -58,7 +58,7 @@ m3u8文件有两种应用场景：多码率适配流 (Master Playlist)，单码�
 
 4.3.4.1 EXT-X-MEDIA
 
-用于关联同一个内容的多个 Media Playlist 的多种 renditions（描述、角度）。例如用三个 EXT-X-MEDIA 标签标识不用音轨的音频的播放列表，有英语、法语、西班牙语等，或者用两个个 EXT-X-MEDIA 标签来标识不同视觉角度拍摄的视频
+用于关联同一个内容的多个 Media Playlist 的多种 renditions（描述、角度）。例如用三个 EXT-X-MEDIA 标签标识不用音轨的音频的播放列表，有英语、法语、西班牙语等，或者用两个 EXT-X-MEDIA 标签来标识不同视觉角度拍摄的视频
 
 `#EXT-X-MEDIA:<attribute-list>`，支持的属性 TYPE、URI、GROUP-ID、LANGUAGE、ASSOC-LANGUAGE、NAME、DEFAULT、AUTOSELECT、FORCED、INSTREAM-ID
 
